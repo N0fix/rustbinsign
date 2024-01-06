@@ -2,7 +2,7 @@ import logging
 import pathlib
 import sys
 import tarfile
-from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
+from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, RawDescriptionHelpFormatter
 from typing import List
 from rich import print
 
@@ -20,13 +20,19 @@ from .subcommands.sign import sign_libs, sign_subcommand
 
 DESCRIPTION = """This script aims at facilitate creation of signatures for rust executables. It can detect dependencies and rustc version used in a target, and create signatures using a signature provider."""
 
+example_text = r"""Usage examples:
+
+ rustbininfo -l DEBUG info 'challenge.exe'
+ rustbininfo sign_target --target challenge.exe --signature_name custom_sig IDA 'C:\Program Files\IDA Pro\idat64.exe' .\sigmake.exe
+ rustbininfo sign_libs -l .\sha2-0.10.8\target\release\sha2.lib -l .\crypt-0.4.2\target\release\crypt.lib IDA 'C:\Program Files\IDA Pro\idat64.exe' .\sigmake.exe
+"""
 
 def parse_args():
     ## Provider subparsers
     provider = ArgumentParser(add_help=False)
 
     sig_subparsers = provider.add_subparsers(
-        dest="provider", title="Available signature providers"
+        dest="provider", title="Available signature providers",
     )
 
     ida_parser = sig_subparsers.add_parser("IDA")
@@ -36,7 +42,7 @@ def parse_args():
 
     ## Main parser
     parser = ArgumentParser(
-        description=DESCRIPTION, formatter_class=ArgumentDefaultsHelpFormatter
+        description=DESCRIPTION, formatter_class=RawDescriptionHelpFormatter, epilog=example_text
     )
 
     parser.add_argument(
@@ -125,7 +131,7 @@ def main_cli():
             NotImplementedError(f"Provider {args.provider} do not exists")
 
     if args.mode == "info":
-        print(TargetRustInfo.from_target(args.target))
+        # print(TargetRustInfo.from_target(args.target))
         info_subcommand(pathlib.Path(args.target))
 
     elif args.mode == "download":

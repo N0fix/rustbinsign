@@ -23,20 +23,29 @@ rustbininfo --help
 # Help
 
 ```bash
-usage: rustbininfo [-h] {info,download,sign,get_std_lib} ...
+usage: rustbininfo [-h] [-l {DEBUG,INFO,WARNING,ERROR,CRITICAL}] {info,download,sign_target,sign_libs,get_std_lib} ...
 
-Rust script
+This script aims at facilitate creation of signatures for rust executables. It can detect dependencies and rustc version used in a target, and create signatures using a signature provider.
 
 options:
   -h, --help            show this help message and exit
+  -l {DEBUG,INFO,WARNING,ERROR,CRITICAL}, --log {DEBUG,INFO,WARNING,ERROR,CRITICAL}
+                        Set the logging level
 
 mode:
-  {info,download,sign,get_std_lib}
+  {info,download,sign_target,sign_libs,get_std_lib}
                         Mode to use
     info                Get information about an executable
     download            Download a crate. Exemple: rand_chacha-0.3.1
-    sign                Generate a signature for a given executable, using choosed sig provider
+    sign_target         Generate a signature for a given executable, using choosed signature provider
+    sign_libs           Generate a signature for a given list of libs, using choosed signature provider
     get_std_lib         Download stdlib with symbols for a specific version of rustc
+
+Usage examples:
+
+ rustbininfo -l DEBUG info 'challenge.exe'
+ rustbininfo sign_target --target challenge.exe --signature_name custom_sig IDA 'C:\Program Files\IDA Pro\idat64.exe' .\sigmake.exe
+ rustbininfo sign_libs -l .\sha2-0.10.8\target\release\sha2.lib -l .\crypt-0.4.2\target\release\crypt.lib IDA 'C:\Program Files\IDA Pro\idat64.exe' .\sigmake.exe
 ```
 
 # Example usage
