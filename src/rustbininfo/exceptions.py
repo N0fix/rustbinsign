@@ -1,0 +1,2 @@
+class InvalidVersionError(Exception):
+    pass
