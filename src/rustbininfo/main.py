@@ -6,6 +6,8 @@ from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, RawDescripti
 from typing import List
 from rich import print
 
+from rustbininfo.sig_providers.binja.binja import BinjaProvider
+from rustbininfo.sig_providers.binja.model import ConfigBinja
 from .compilation import compile_crate
 from .info_gathering import get_dependencies, get_rustc_version, TargetRustInfo
 from .logger import get_log_handler, logger
@@ -39,6 +41,9 @@ def parse_args():
     ida_parser.add_argument("idat_path", type=pathlib.Path)
     # ida_parser.add_argument("pattern_generator", type=pathlib.Path, help="(pcf.exe, pelf...)")
     ida_parser.add_argument("sigmake_path", type=pathlib.Path)
+
+    binja_parser = sig_subparsers.add_parser("Binja")
+    binja_parser.add_argument("--multiprocess", type=bool, required=False, default=False) # Might sometimes Nuke PC
 
     ## Main parser
     parser = ArgumentParser(
@@ -127,6 +132,8 @@ def main_cli():
                 )
             )
 
+        elif args.provider == "Binja":
+            provider = BinjaProvider(ConfigBinja(multiprocess=args.multiprocess))
         else:
             NotImplementedError(f"Provider {args.provider} do not exists")
 
