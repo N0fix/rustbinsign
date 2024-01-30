@@ -97,3 +97,7 @@ Finally, this tool does its best as compiling as much features as your target de
 # Thanks
 
 This tool uses the great Mandiant's [idb2pat](https://github.com/mandiant/flare-ida/blob/master/python/flare/idb2pat.py).
+
+## Known bugs
+
+chacha20, ctr, pkcs, unicode-segmentation crates due to invalid utf8 parsing.

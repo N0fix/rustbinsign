@@ -671,7 +671,7 @@ def main():
         except:  # If non windows, might not have a .pdb file
             pass
 
-    c = Config()
+    c = Config(min_func_length=5)
     update_config(c)
     if c.logenabled:
         h = logging.FileHandler(c.logfile)
