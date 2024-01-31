@@ -30,7 +30,7 @@ class BinjaProvider(BaseSigProvider):
             func_info = {}
             for lib in libs:
                 lib_pattern = self.process_binary(lib)
-                func_info = func_info.update(lib_pattern)
+                func_info.update(lib_pattern)
             return func_info
                 
         workers = mp.cpu_count() // 4   # its all wrong here, wait for the --workers

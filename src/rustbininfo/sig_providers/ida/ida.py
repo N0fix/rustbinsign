@@ -1,14 +1,14 @@
 import os
 import pathlib
 import subprocess
-
+import tempfile
 from typing import List, Optional
 
 from parse import *
 
 from ...logger import logger as log
-from .model import ConfigIDA
 from ..provider_base import BaseSigProvider
+from .model import ConfigIDA
 
 
 class SignatureError(Exception):
@@ -53,16 +53,17 @@ class IDAProvider(BaseSigProvider):
         return self._generate_sig_file(pats, sig_name)
 
     def _generate_sig_file(self, pats: [pathlib.Path], sig_name):
-        print(pats)
-        cmdline = [f"{str(self.cfg.sigmake)}", f'-n"{sig_name}"', "-s"]
+        cmdline = [f"{str(self.cfg.sigmake)}", "-t5", f'-n"{sig_name}"', "-s"]
         for pat in pats:
             cmdline.append(str(pat))
         cmdline.append(f"{sig_name}.sig")
 
+        # log.debug(" ".join(cmdline))
+
         p = subprocess.run(
             cmdline,
-            # stdout=subprocess.PIPE,
-            # stderr=subprocess.STDOUT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             check=False,
         )
 
@@ -82,7 +83,7 @@ class IDAProvider(BaseSigProvider):
 
     def _generate_pattern(self, libfile) -> pathlib.Path:
         assert libfile.exists()
-        print(f"Gen for {libfile}...")
+        log.info(f"Gen for {libfile}...")
         script_path = pathlib.Path(__file__).parent.resolve().joinpath("idb2pat.py")
         target_path = (
             pathlib.Path(os.getcwd()).joinpath(libfile.name).with_suffix(".pat")
@@ -95,7 +96,7 @@ class IDAProvider(BaseSigProvider):
             script_cmd = f"-S{script_path} {str(target_path)}"
         env = os.environ
         env["TVHEADLESS"] = "1"  # requiered for IDAt linux
-
+        env["IDALOG"] = str(pathlib.Path(tempfile.gettempdir(), "idalog.txt"))
         subprocess.run(
             [
                 f"{self.cfg.idat}",
@@ -104,12 +105,12 @@ class IDAProvider(BaseSigProvider):
                 "-A",
                 f"{str(libfile)}",
             ],
-            # stdout=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
             check=True,
             # shell=True,
             env=env,
         )
-        print(f"Saved to {target_path}")
+        log.info(f"Saved to {target_path}")
         return target_path
 
     def _generate_pattern_files(self, libs) -> List[pathlib.Path]:

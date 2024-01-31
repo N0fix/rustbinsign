@@ -1,0 +1,11 @@
+{
+    "lib": {"crate-type": ["dylib"]},
+    "profile": {
+        "release": {
+            "debug": 2,
+            "strip": "none",
+            "opt-level": 3,
+            "lto": "fat"
+        }
+    }
+}
