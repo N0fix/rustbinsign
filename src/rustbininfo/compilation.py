@@ -5,12 +5,14 @@ import subprocess
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Text
 
+import parse
 import toml
+from git import Repo, TagReference
 
 from .exceptions import CompilationError
 from .logger import logger as log
 from .model import CompilationCtx, Crate
-from .util import extract_tarfile
+from .util import extract_tarfile, get_default_dest_dir
 
 
 # Unused yet
@@ -83,6 +85,120 @@ class CompilationUnit:
         self.ctx = ctx
         self.tc = toolchain
 
+    def _setup_repo(self, crate: Crate):
+        repo_path = get_default_dest_dir().joinpath(crate.name)
+
+        try:
+            repo = Repo.clone_from(crate.repository, repo_path)
+
+        except:
+            log.error(
+                f"Could not clone {crate.repository} to {repo_path}, assuming that the repo is cloned already"
+            )
+            repo = Repo(repo_path)
+
+        # Nothing standard, but most repos should have something like this
+        seeked_tags = [
+            f"{crate.name}-{crate.version}",
+            f"{crate.name}-v{crate.version}",
+            f"{crate.name}_{crate.version}",
+            f"{crate.name}_v{crate.version}",
+            f"{crate.version}",
+            f"v{crate.version}",
+        ]
+
+        found_tag = None
+
+        for tag in TagReference.list_items(repo):
+            if tag.name in seeked_tags:
+                found_tag = tag
+
+        if found_tag is not None:
+            log.debug(f"Found tag {found_tag}, checking out")
+            repo.git.checkout(found_tag)
+
+        return repo_path
+
+    def _cargo_build(
+        self,
+        project_path: pathlib.Path,
+        crate: Crate,
+        features: Optional[List[Text]] = (),
+        post_verb: Optional[List[Text]] = (),
+        additional_env: Optional[Dict] = None,
+    ):
+        args = [
+            "rustup",
+            "run",
+            self.tc.name,
+            "cargo",
+            "build",
+            # "--no-run",
+            # "--profile",
+            # "release",
+        ]
+
+        args += list(post_verb)
+
+        if features:
+            args.append("--features")
+            args.append(
+                ",".join(
+                    list(filter(lambda f: f not in ["nightly", "default"], features))
+                )
+            )
+
+        env = os.environ.copy()
+        if env is not None:
+            # Custom environ setup
+            if additional_env:
+                for key, val in self.ctx.env.items():
+                    env[key] = val
+
+        log.debug(f'{" ".join(args)} || With env : {self.ctx.env}')
+
+        ret = subprocess.run(
+            args,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=project_path,
+            env=env,
+        )
+
+        if ret.returncode == 0:
+            return ret.returncode, ret.stdout, ret.stderr
+
+        if features:  # Remaining features to test compilation with
+            # Removing one feature and try to compile again
+            log.debug(f"Compilation failed, retrying with features : {features[1:]}")
+            return self._cargo_build(
+                project_path, crate, features[1:], post_verb, additional_env
+            )
+
+        return ret.returncode, ret.stdout, ret.stderr
+
+    def compile_examples(self, crate: Crate, features: Optional[List[Text]] = ()):
+        repo_path = self._setup_repo(crate)
+        log.info("Compiling tests, it might take minutes")
+
+        # I guess output path could be customisable, so this is not guaranteed to work.
+        code, out, err = self._cargo_build(repo_path, crate, features, ["--tests", "--profile", "release" if self.ctx.profile == "release" else "dev"])
+        code, out, err = self._cargo_build(repo_path, crate, features, ["--benches", "--profile", "release" if self.ctx.profile == "release" else "dev"])
+        code, out, err = self._cargo_build(repo_path, crate, features, ["--examples", "--profile", "release" if self.ctx.profile == "release" else "dev"])
+
+
+
+        # targets = []
+
+        # for line in ret.stderr.decode("utf-8").splitlines():
+        #     if "Executable" in line:
+        #         t = parse.parse(
+        #             "{}Executable {}.rs ({target})", line, case_sensitive=True
+        #         )
+        #         targets.append(t["target"])
+        # list(filter(lambda i: i is not None, targets))
+        
+
     def compile_crate(
         self, crate: Crate, toml_path: Path, crate_transform: Optional[Callable] = None
     ) -> List[pathlib.Path]:
@@ -129,6 +245,9 @@ class CompilationUnit:
     ):
         archive_path: Path = crate.download()
         extracted_location = extract_tarfile(archive_path)
+
+        self.compile_examples(crate, crate.features)
+        exit(1)
 
         # Crates can be transformed if needed for a specific compilation.
         # For example, hyper needs a modification when being compiled with musl, due to metadata clash

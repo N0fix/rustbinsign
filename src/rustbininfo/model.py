@@ -29,6 +29,7 @@ class Crate(BaseModel):
     name: str
     version: str
     features: List[str] = []
+    repository: Optional[str] = None
     _available_versions: List[str] = []
     _available_features: List[str] = []
     _api_base_url: str = "https://crates.io/"
@@ -72,6 +73,8 @@ class Crate(BaseModel):
 
         if self.version not in self._available_versions:
             raise InvalidVersionError
+
+        self.repository = result["crate"]["repository"]
 
         assert self._version_info is not None
 

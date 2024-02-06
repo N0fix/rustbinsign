@@ -3,8 +3,11 @@ import logging
 import pathlib
 import sys
 import tarfile
-from argparse import (ArgumentDefaultsHelpFormatter, ArgumentParser,
-                      RawDescriptionHelpFormatter)
+from argparse import (
+    ArgumentDefaultsHelpFormatter,
+    ArgumentParser,
+    RawDescriptionHelpFormatter,
+)
 from enum import Enum
 from typing import List
 
@@ -34,6 +37,7 @@ example_text = r"""Usage examples:
  rustbininfo sign_target -t 1.70.0-x86_64-unknown-linux-musl  --target ~/Downloads/target --no-std --signature_name malware_1.70.0_musl
 
  """
+
 
 def parse_args():
     ## Provider subparsers
