@@ -2,6 +2,7 @@ import os
 import pathlib
 import subprocess
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from typing import List, Optional
 
 from parse import *
@@ -45,12 +46,34 @@ class IDAProvider(BaseSigProvider):
     def generate_signature(
         self, libs: List[pathlib.Path], sig_name: Optional[str]
     ) -> pathlib.Path:
-        log.debug("Generating pattern files...")
-        pats: List[pathlib.Path] = self._generate_pattern_files(libs)
+        POOL_SIZE = 10
+        log.debug(f"Generating pattern files with {POOL_SIZE} threads...")
+        pats = []
+        futures = []
+        fails = 0
+        tp = ThreadPoolExecutor(max_workers=POOL_SIZE)
+
+        def routine(self, lib):
+            return self._generate_pattern(lib)
+        
+        for lib in libs:
+            futures.append(tp.submit(routine, self, lib))
+
+        for fut in futures:
+            try:
+                pats.append(fut.result())
+
+            except:
+                fails += 1
+
+        log.info(f"{len(pats)} pat generated. {fails} failed.")
+
         if sig_name is None:
             sig_name = f"rust-std-{self.version}-{os.name}"
 
         return self._generate_sig_file(pats, sig_name)
+
+
 
     def _generate_sig_file(self, pats: [pathlib.Path], sig_name):
         cmdline = [f"{str(self.cfg.sigmake)}", "-t5", f'-n"{sig_name}"', "-s"]

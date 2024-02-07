@@ -40,7 +40,10 @@ class DefaultToolchain(ToolchainModel):
         rustup_install_toolchain(self.name)
         return self
 
-    def compile_crate(self, crate: Crate, ctx: CompilationCtx = CompilationCtx()):
+    def compile_crate(self, crate: Crate, ctx: Optional[CompilationCtx] = None):
+        if ctx is None:
+            ctx = CompilationCtx(template=self._default_template)
+
         unit = CompilationUnit(self, ctx)
         return unit.compile_remote_crate(crate, self.crate_transforms.get(crate.name))
 

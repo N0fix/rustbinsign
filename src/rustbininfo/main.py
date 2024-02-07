@@ -3,11 +3,8 @@ import logging
 import pathlib
 import sys
 import tarfile
-from argparse import (
-    ArgumentDefaultsHelpFormatter,
-    ArgumentParser,
-    RawDescriptionHelpFormatter,
-)
+from argparse import (ArgumentDefaultsHelpFormatter, ArgumentParser,
+                      RawDescriptionHelpFormatter)
 from enum import Enum
 from typing import List
 
@@ -191,7 +188,7 @@ def main_cli():
         logger.setLevel(getattr(logging, args.logLevel))
         logger.addHandler(get_log_handler())
 
-    if args.mode in ("sign_libs", "sign_target", "sign_stdlib"):
+    if args.mode in ("download_sign", "sign_libs", "sign_target", "sign_stdlib"):
         if args.provider == "IDA":
             provider = IDAProvider(
                 ConfigIDA(
@@ -212,8 +209,15 @@ def main_cli():
             download_subcommand(args.crate, args.directory)
 
         case "download_sign":
+            template = None
+            if args.template:
+                template = json.load(open(args.template, "r", encoding="utf-8"))
+
             tc = ToolchainFactory.from_target_triplet(args.toolchain).install()
-            tc.compile_crate(Crate.from_depstring(args.crate))
+            tc.set_default_compilation_template(template)
+            libs = tc.compile_crate(Crate.from_depstring(args.crate))
+            signature_path = sign_libs(provider, libs, "tmp")
+            print(f"Generated signature : {signature_path}")
 
         case "sign_libs":
             signature_path = sign_libs(provider, args.lib, "tmp")
