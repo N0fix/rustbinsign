@@ -135,9 +135,6 @@ class CompilationUnit:
             self.tc.name,
             "cargo",
             "build",
-            # "--no-run",
-            # "--profile",
-            # "release",
         ]
 
         args += list(post_verb)
@@ -179,7 +176,9 @@ class CompilationUnit:
 
         return ret.returncode, ret.stdout, ret.stderr
 
-    def _compile_extra(self, repo_path: Path, crate: Crate, features: Optional[List[Text]] = ()) -> Path:
+    def _compile_extra(
+        self, repo_path: Path, crate: Crate, features: Optional[List[Text]] = ()
+    ) -> Path:
         log.info("Compiling tests, it might take minutes")
 
         # I guess output path could be customisable, so this is not guaranteed to work.
@@ -192,6 +191,7 @@ class CompilationUnit:
                 "--profile",
                 "release" if self.ctx.profile == "release" else "dev",
             ],
+            additional_env=self.ctx.env,
         )
         code, out, err = self._cargo_build(
             repo_path,
@@ -202,6 +202,7 @@ class CompilationUnit:
                 "--profile",
                 "release" if self.ctx.profile == "release" else "dev",
             ],
+            additional_env=self.ctx.env,
         )
         code, out, err = self._cargo_build(
             repo_path,
@@ -212,6 +213,7 @@ class CompilationUnit:
                 "--profile",
                 "release" if self.ctx.profile == "release" else "dev",
             ],
+            additional_env=self.ctx.env,
         )
 
         return repo_path
@@ -228,6 +230,7 @@ class CompilationUnit:
                 "--profile",
                 "release" if self.ctx.profile == "release" else "dev",
             ],
+            additional_env=self.ctx.env,
         )
 
     def _get_result_files(
@@ -273,20 +276,29 @@ class CompilationUnit:
         return results
 
     def compile_crate(
-        self, crate: Crate, toml_path: Path, crate_transform: Optional[Callable] = None
+        self,
+        crate: Crate,
+        toml_path: Path,
+        lib: bool = True,
+        crate_transform: Optional[Callable] = None,
     ) -> List[pathlib.Path]:
         results = []
+        features = []
+
+        if "full" in features:
+            features = ["full"]
 
         repo_path = self._setup_repo(crate)
         if repo_path is not None:
             setup_toml(repo_path.joinpath("Cargo.toml"), self.ctx.template)
-            self._compile_extra(repo_path, crate, crate.features)
+            self._compile_extra(repo_path, crate, features)
             results += self._get_result_files(repo_path)
 
         lib_template = self.ctx.template.copy()
-        # lib_template["lib"] = {"crate-type": ["dylib"]}
+        if self.ctx.lib:
+            lib_template["lib"] = {"crate-type": ["dylib"]}
         setup_toml(toml_path, lib_template)
-        self._compile_lib(toml_path.parent, crate, crate.features)
+        self._compile_lib(toml_path.parent, crate, features)
         results += self._get_result_files(toml_path.parent)
 
         log.info(f"{len(results)} results from compilation of {crate.name}")
@@ -309,71 +321,3 @@ class CompilationUnit:
             crate_transform(extracted_location)
 
         result = self.compile_crate(crate, extracted_location.joinpath("Cargo.toml"))
-
-        if result is None or len(result) == 0:
-            raise CompilationError
-
-        for r in result:
-            log.info(f"Compiled {str(r)}")
-
-        return result
-
-    # def _compile_with_cargo(
-    #     self,
-    #     toml_path: Path,
-    #     features: Optional[List[Text]] = (),
-    # ) -> bool:
-    #     """
-    #     This algorithm is very stupid.
-    #     Attempts to compile crates with the maximum of features available.
-    #     If compilation fails, remove a feature, and try again.
-    #     """
-    #     args = [
-    #         "rustup",
-    #         "run",
-    #         self.tc.name,
-    #         "cargo",
-    #         "build",
-    #     ]
-
-    #     if self.ctx.lib:
-    #         args.append("--lib")
-
-    #     if self.ctx.profile == "release":
-    #         args.append("--release")
-
-    #     if features:
-    #         args.append("--features")
-    #         args.append(
-    #             ",".join(
-    #                 list(filter(lambda f: f not in ["nightly", "default"], features))
-    #             )
-    #         )
-
-    #     # Custom environ setup
-    #     env = os.environ.copy()
-    #     if self.ctx.env:
-    #         for key, val in self.ctx.env.items():
-    #             env[key] = val
-
-    #     log.debug(f'{" ".join(args)} || With env : {self.ctx.env}')
-
-    #     ret = subprocess.run(
-    #         args,
-    #         stdout=subprocess.PIPE,
-    #         stderr=subprocess.PIPE,
-    #         cwd=toml_path.parent,
-    #         env=env,
-    #     )
-    #     # print(ret.stderr)
-    #     # print(ret.stdout)
-
-    #     if ret.returncode == 0:
-    #         return True
-
-    #     if features:  # Remaining features to test compilation with
-    #         # Removing one feature and try to compile again
-    #         log.debug(f"Compilation failed, retrying with features : {features[1:]}")
-    #         return self._compile_with_cargo(toml_path, features[1:])
-
-    #     return False

@@ -36,6 +36,7 @@ class MuslToolchain(DefaultToolchain):
         return toolchain_name == "x86_64-unknown-linux-musl"
 
     def install(self) -> "self":
+        log.warning("MUSL toolchain requieres musl, musl-dev and musl-tools packages to be installed.")
         log.debug(f"Downloading and installing toolchain version {self.name}")
         rustup_install_toolchain(self.name)
 

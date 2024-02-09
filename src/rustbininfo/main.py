@@ -20,6 +20,7 @@ from .subcommands.download import download_subcommand
 from .subcommands.info import info_subcommand
 from .subcommands.sign import sign_libs, sign_subcommand
 from .toolchain import ToolchainFactory
+from .util import slugify
 
 DESCRIPTION = """This script aims at facilitate creation of signatures for rust executables. It can detect dependencies and rustc version used in a target, and create signatures using a signature provider."""
 
@@ -32,7 +33,6 @@ example_text = r"""Usage examples:
  rustbininfo get_std_lib 1.70.0-x86_64-unknown-linux-musl
  rustbininfo sign_libs -l .\sha2-0.10.8\target\release\sha2.lib -l .\crypt-0.4.2\target\release\crypt.lib IDA 'C:\Program Files\IDA Pro\idat64.exe' .\sigmake.exe
  rustbininfo sign_target -t 1.70.0-x86_64-unknown-linux-musl  --target ~/Downloads/target --no-std --signature_name malware_1.70.0_musl
-
  """
 
 
@@ -112,7 +112,7 @@ def parse_args():
     sign_stdlib_parser = subparsers.add_parser(
         "sign_stdlib",
         help="Sign standard lib toolchain",
-        parents=[provider, template_parser],
+        parents=[provider, template_parser, profile_parser],
     )
     signature_parser = subparsers.add_parser(
         "sign_target",
@@ -131,6 +131,7 @@ def parse_args():
     )
     std_parser = subparsers.add_parser(
         "get_std_lib",
+        parents=[profile_parser, template_parser],
         help="Download stdlib with symbols for a specific version of rustc",
     )
 
@@ -179,6 +180,7 @@ def main_cli():
     parser = parse_args()
     args = parser.parse_args()
     provider = None
+    template = None
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
@@ -200,21 +202,27 @@ def main_cli():
         else:
             NotImplementedError(f"Provider {args.provider} do not exists")
 
+    if args.mode in ("sign_stdlib", "download_sign", "sign_target"):
+        if args.template:
+            template = json.load(open(args.template, "r", encoding="utf-8"))
+
+    if args.mode in ("download_sign", "sign_target", "sign_stdlib", "get_std_lib"):
+        tc = (
+            ToolchainFactory.from_target_triplet(args.toolchain)
+            .set_compilation_profile(args.profile)
+            .set_compilation_template(template)
+        )
+        if args.mode != "sign_target":
+            tc.install()
+
     match args.mode:
         case "info":
             print(TargetRustInfo.from_target(args.target))
-            # info_subcommand(pathlib.Path(args.target))
 
         case "download":
             download_subcommand(args.crate, args.directory)
 
         case "download_sign":
-            template = None
-            if args.template:
-                template = json.load(open(args.template, "r", encoding="utf-8"))
-
-            tc = ToolchainFactory.from_target_triplet(args.toolchain).install()
-            tc.set_default_compilation_template(template)
             libs = tc.compile_crate(Crate.from_depstring(args.crate))
             signature_path = sign_libs(provider, libs, "tmp")
             print(f"Generated signature : {signature_path}")
@@ -224,16 +232,14 @@ def main_cli():
             print(f"Generated signature : {signature_path}")
 
         case "sign_target":
-            template = None
-            if args.template:
-                template = json.load(open(args.template, "r", encoding="utf-8"))
-
-            if args.toolchain:
-                tc = ToolchainFactory.from_target_triplet(args.toolchain).install()
-
-            else:
+            if not args.toolchain:
                 _, version = get_rustc_version(pathlib.Path(args.target))
-                tc = ToolchainFactory.from_version(version).install()
+                tc = (
+                    ToolchainFactory.from_version(version)
+                    .set_compilation_profile(args.profile)
+                    .set_compilation_template(template)
+                    .install()
+                )
 
             sign_subcommand(
                 provider,
@@ -246,16 +252,16 @@ def main_cli():
             )
 
         case "sign_stdlib":
-            tc = ToolchainFactory.from_target_triplet(args.toolchain).install()
-            template = None
-            if args.template:
-                template = json.load(open(args.template, "r", encoding="utf-8"))
-
-            tc.set_default_compilation_template(template)
-            sign_libs(provider, tc.get_libs(), str(tc.name))
+            template = template or "default"
+            signame = f"{tc.name}-{args.profile}-{slugify(template)}"
+            sign_libs(
+                provider,
+                tc.get_libs(),
+                signame
+            )
+            print(f"Generated : {signame}.sig")
 
         case "get_std_lib":
-            tc = ToolchainFactory.from_target_triplet(args.toolchain).install()
             for lib in tc.get_libs():
                 print(lib)
 
