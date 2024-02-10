@@ -1,5 +1,6 @@
 import os
 import pathlib
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -64,7 +65,8 @@ class IDAProvider(BaseSigProvider):
             try:
                 pats.append(fut.result())
 
-            except:
+            except Exception as exc:
+                print(exc)
                 fails += 1
 
         log.info(f"{len(pats)} pat generated. {fails} failed.")
@@ -74,7 +76,10 @@ class IDAProvider(BaseSigProvider):
 
         return self._generate_sig_file(pats, sig_name)
 
-    def _generate_sig_file(self, pats: [pathlib.Path], sig_name):
+    def _generate_sig_file(self, pats: List[pathlib.Path], sig_name):
+        if len(pats) == 0:
+            raise SignatureError
+
         cmdline = [f"{str(self.cfg.sigmake)}", "-t5", f'-n"{sig_name}"', "-s"]
         for pat in pats:
             cmdline.append(str(pat))
@@ -115,7 +120,7 @@ class IDAProvider(BaseSigProvider):
 
         if target_path.exists(): # Don't resign if signed already
             return target_path
-
+        
         assert script_path.exists()
         if os.name != "nt":
             script_cmd = f'-S{script_path} "{str(target_path)}"'
@@ -125,14 +130,17 @@ class IDAProvider(BaseSigProvider):
         env = os.environ
         env["TVHEADLESS"] = "1"  # requiered for IDAt linux
         env["IDALOG"] = str(pathlib.Path(tempfile.gettempdir(), "idalog.txt"))
-        subprocess.run(
-            [
+        env["TERM"] = "xterm"
+        args = [
                 f"{self.cfg.idat}",
                 script_cmd,
                 "-a",
                 "-A",
                 f"{str(libfile)}",
-            ],
+            ]
+
+        subprocess.run(
+            args,
             stdout=subprocess.DEVNULL,
             check=True,
             # shell=True,

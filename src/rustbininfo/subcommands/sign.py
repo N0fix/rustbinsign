@@ -43,7 +43,7 @@ def sign_subcommand(
 
     for dep in dependencies:
         try:
-            args = {"profile": "release"}
+            args = {"profile": profile}
             if template is not None:
                 args["template"] = template
 

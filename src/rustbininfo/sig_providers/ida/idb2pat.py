@@ -673,16 +673,17 @@ def main():
 
     c = Config(min_func_length=5)
     update_config(c)
-    if c.logenabled:
-        h = logging.FileHandler(c.logfile)
-        h.setLevel(c.loglevel)
-        logging.getLogger().addHandler(h)
-
+    # if c.logenabled:
+    # h = logging.FileHandler('/tmp/idb2pat.log')
+    # h.setLevel(c.loglevel)
+    # logging.getLogger().addHandler(h)
+    # g_logger.info(idc.ARGV[0])
+    # g_logger.info(idc.ARGV[1])
     filename = idc.ARGV[1]
 
     if filename is None:
         g_logger.debug("No file selected")
-        return
+        ida_pro.qexit(0)
 
     sigs = make_func_sigs(c)
 

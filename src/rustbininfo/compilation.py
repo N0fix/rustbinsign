@@ -279,11 +279,11 @@ class CompilationUnit:
         self,
         crate: Crate,
         toml_path: Path,
-        lib: bool = True,
-        crate_transform: Optional[Callable] = None,
+        # lib: bool = True,
+        # crate_transform: Optional[Callable] = None,
     ) -> List[pathlib.Path]:
         results = []
-        features = []
+        features = crate.features
 
         if "full" in features:
             features = ["full"]
