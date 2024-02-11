@@ -70,11 +70,10 @@ rand_chacha-0.3.1
 
 This can be used to apply the proper signature, available [here](https://github.com/N0fix/rust-std-sigs).
 
-## Sign
-```bash
-rbi -l DEBUG sign_target --signature_name ivanti2 --template ".\profiles\size_opt.json" -p release -t 1.70.0-x86_64-unknown-linux-gnu --no-std --target ".\samples\target" IDA 'C:\Program Files\IDA Pro 8.3\idat64' "C:\Users\user\Downloads\sigmake.exe"
-[...Should create a crackme.sig file that you can import into IDA]
-```
+# Requirements
+
+You have to build on the same platform then the platform used to build your target (likely linux if your target is an ELF, likely windows if your target is an EXE).
+IDA's provider requires IDA with IDAPython.
 
 # Extending the tool for other disassemblers
 
