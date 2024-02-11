@@ -22,6 +22,7 @@ class DefaultToolchain(ToolchainModel):
     _toolchain_name: Optional[str]
     compile_unit: CompilationUnit
     _default_template: Dict
+    _profile: Optional[str] = "release"
 
     def __init__(self, version: str, toolchain_name: Optional[str] = None):
         self._version = version
@@ -40,7 +41,10 @@ class DefaultToolchain(ToolchainModel):
         rustup_install_toolchain(self.name)
         return self
 
-    def compile_crate(self, crate: Crate, ctx: CompilationCtx = CompilationCtx()):
+    def compile_crate(self, crate: Crate, ctx: Optional[CompilationCtx] = None):
+        if ctx is None:
+            ctx = CompilationCtx(template=self._default_template, profile=self._profile)
+
         unit = CompilationUnit(self, ctx)
         return unit.compile_remote_crate(crate, self.crate_transforms.get(crate.name))
 
@@ -51,8 +55,15 @@ class DefaultToolchain(ToolchainModel):
         self.libs = self._filter_libs(self.libs, lambda x: not "driver" in x.name)
         return self.libs
 
-    def set_default_compilation_template(self, template: Dict):
-        self._default_template = template
+    def set_compilation_template(self, template: Optional[Dict]):
+        if template is not None:
+            self._default_template = template
+
+        return self
+
+    def set_compilation_profile(self, profile: str):
+        self._profile = profile
+        return self
 
     def _gen_libs(self):
         rustup_home = get_rustup_home()

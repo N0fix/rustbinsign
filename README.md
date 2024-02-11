@@ -1,8 +1,8 @@
 Search for dependencies inside a compiled rust executable, download them and create a signature.
 
+- Allows you to create a signature out of dependencies and proper rust stdlib, using the right toolchain.
 - Give information about the version of the compiler used
 - Give information about detected dependencies used
-- Allows you to create a signature out of dependencies and proper rust std, using the right toolchain.
 - Allows you to easily download a crate
 
 
@@ -23,7 +23,7 @@ rustbininfo --help
 # Help
 
 ```bash
-usage: rustbininfo [-h] [-l {DEBUG,INFO,WARNING,ERROR,CRITICAL}] {info,download,sign_target,sign_libs,get_std_lib} ...
+usage: rbi [-h] [-l {DEBUG,INFO,WARNING,ERROR,CRITICAL}] {info,download,download_sign,sign_stdlib,sign_target,sign_libs,get_std_lib} ...
 
 This script aims at facilitate creation of signatures for rust executables. It can detect dependencies and rustc version used in a target, and create signatures using a signature provider.
 
@@ -33,10 +33,12 @@ options:
                         Set the logging level
 
 mode:
-  {info,download,sign_target,sign_libs,get_std_lib}
+  {info,download,download_sign,sign_stdlib,sign_target,sign_libs,get_std_lib}
                         Mode to use
     info                Get information about an executable
     download            Download a crate. Exemple: rand_chacha-0.3.1
+    download_sign       Download a crate. And signs it. Exemple: rand_chacha-0.3.1
+    sign_stdlib         Sign standard lib toolchain
     sign_target         Generate a signature for a given executable, using choosed signature provider
     sign_libs           Generate a signature for a given list of libs, using choosed signature provider
     get_std_lib         Download stdlib with symbols for a specific version of rustc
@@ -44,8 +46,12 @@ mode:
 Usage examples:
 
  rustbininfo -l DEBUG info 'challenge.exe'
- rustbininfo sign_target --target challenge.exe --signature_name custom_sig IDA 'C:\Program Files\IDA Pro\idat64.exe' .\sigmake.exe
+ rustbininfo download_sign IDA 'C:\Program Files\IDA Pro\idat64.exe' .\sigmake.exe hyper-0.14.27 1.70.0-x86_64-unknown-linux-gnu
+ rustbininfo download hyper-0.14.27
+ rustbininfo sign_stdlib --template ./profiles/ivanti_rust_sample.json -t 1.70.0-x86_64-unknown-linux-musl IDA ~/idat64 ~/sigmake
+ rustbininfo get_std_lib 1.70.0-x86_64-unknown-linux-musl
  rustbininfo sign_libs -l .\sha2-0.10.8\target\release\sha2.lib -l .\crypt-0.4.2\target\release\crypt.lib IDA 'C:\Program Files\IDA Pro\idat64.exe' .\sigmake.exe
+ rustbininfo sign_target -t 1.70.0-x86_64-unknown-linux-musl  --target ~/Downloads/target --no-std --signature_name malware_1.70.0_musl
 ```
 
 # Example usage
@@ -66,7 +72,7 @@ This can be used to apply the proper signature, available [here](https://github.
 
 ## Sign
 ```bash
-> rustbininfo sign C:\Users\user\Downloads\crackme.exe crackme_signature IDA 'C:\Program Files\IDA Pro 8.3\idat64' "C:\Users\user\Downloads\sigmake.exe"
+rbi -l DEBUG sign_target --signature_name ivanti2 --template ".\profiles\size_opt.json" -p release -t 1.70.0-x86_64-unknown-linux-gnu --no-std --target ".\samples\target" IDA 'C:\Program Files\IDA Pro 8.3\idat64' "C:\Users\user\Downloads\sigmake.exe"
 [...Should create a crackme.sig file that you can import into IDA]
 ```
 
@@ -86,18 +92,8 @@ This tool generates a signature using a signature provider defined under sig_pro
 
 ## Limitations
 
-First, Detected version of the compiler might not be exact. A better approach would be to pull the proper commit, build rust using `x.py` and add this to available toolchains.
-
-Also, Rust allows for numerous optimizations, with inlining being one of them. inlined functions pose a challenge for signature generation and may go unrecognized by FLIRT, thereby undermining the primary objective of this tool.
-
-Additionally, it's important to note that this tool compiles dependencies in release mode by default. However, there's a possibility that your target may not have compiled these dependencies in release mode.
-
-Finally, this tool does its best as compiling as much features as your target dependencies expose, but might be missing some.
+Limitations are described in [this blogpost](https://nofix.re/posts/2024-11-02-rust-symbs/).
 
 # Thanks
 
 This tool uses the great Mandiant's [idb2pat](https://github.com/mandiant/flare-ida/blob/master/python/flare/idb2pat.py).
-
-## Known bugs
-
-chacha20, ctr, pkcs, unicode-segmentation crates due to invalid utf8 parsing.

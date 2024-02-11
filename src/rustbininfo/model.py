@@ -29,29 +29,30 @@ class Crate(BaseModel):
     name: str
     version: str
     features: List[str] = []
+    repository: Optional[str] = None
+    _fast_load: bool = True
     _available_versions: List[str] = []
-    _available_features: List[str] = []
     _api_base_url: str = "https://crates.io/"
     _version_info: dict = None
-    _fast_load: bool = True
 
     @classmethod
     def from_depstring(cls, dep_str: str, fast_load=True) -> "Crate":
         try:
             name, version = dep_str.rsplit("-", 1)
-            return cls(
+            obj = cls(
                 name=name,
                 version=str(semver.Version.parse(version)),
-                _fast_load=fast_load,
             )
 
         except:
             name, version, _ = dep_str.rsplit("-", 2)
-            return cls(
+            obj = cls(
                 name=name,
                 version=str(semver.Version.parse(version)),
-                _fast_load=fast_load,
             )
+        
+        obj._fast_load = fast_load
+        return obj
 
     def model_post_init(self, __context) -> None:
         if not self._fast_load:
@@ -73,10 +74,12 @@ class Crate(BaseModel):
         if self.version not in self._available_versions:
             raise InvalidVersionError
 
+        self.repository = result["crate"]["repository"]
+
         assert self._version_info is not None
 
     def download(self, destination_directory: Optional[Path] = None) -> Path:
-        log.debug(f"Downloading crate {self.name}")
+        log.info(f"Downloading crate {self.name}")
 
         if len(self._available_versions) == 0:
             self._get_metadata()
