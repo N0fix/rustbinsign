@@ -18,16 +18,16 @@ class DefaultToolchain(ToolchainModel):
     """
 
     libs: Optional[List[pathlib.Path]]
-    _version: str
-    _toolchain_name: Optional[str]
+    version: str
+    toolchain_name: Optional[str]
     compile_unit: CompilationUnit
     _default_template: Dict
     _profile: Optional[str] = "release"
 
     def __init__(self, version: str, toolchain_name: Optional[str] = None):
-        self._version = version
+        self.version = version
         self.libs = None
-        self._toolchain_name = toolchain_name
+        self.toolchain_name = toolchain_name
         self.compile_unit = CompilationUnit(self)
         self.crate_transforms = {}
         self._default_template = None
@@ -38,7 +38,7 @@ class DefaultToolchain(ToolchainModel):
 
     def install(self) -> "self":
         log.debug(f"Downloading and installing toolchain version {self.name}")
-        rustup_install_toolchain(self.name)
+        rustup_install_toolchain(self.version, self.toolchain_name)
         return self
 
     def compile_crate(self, crate: Crate, ctx: Optional[CompilationCtx] = None):
@@ -72,9 +72,9 @@ class DefaultToolchain(ToolchainModel):
         target = None
         for _, dirs, _ in os.walk(tc_path):
             for directory in dirs:
-                correct_version = directory.startswith(self._version)
+                correct_version = directory.startswith(self.version)
                 correct_toolchain = (
-                    not self._toolchain_name or self._toolchain_name in directory
+                    not self.toolchain_name or self.toolchain_name in directory
                 )
                 if correct_version and correct_toolchain:
                     target = directory
@@ -84,8 +84,8 @@ class DefaultToolchain(ToolchainModel):
 
         assert target is not None
 
-        if self._toolchain_name is None:
-            self._toolchain_name = target.split("-", 1)[1]
+        if self.toolchain_name is None:
+            self.toolchain_name = target.split("-", 1)[1]
 
         # if "nt" in os.name: #XXX: removed due to potential cross compilation?
         libs_path = tc_path / pathlib.Path(target) / pathlib.Path("bin")
@@ -98,7 +98,7 @@ class DefaultToolchain(ToolchainModel):
             / pathlib.Path(target)
             / "lib"
             / "rustlib"
-            / self._toolchain_name
+            / self.toolchain_name
             / "lib"
         )
         libs += list(libs_path.glob("*.so"))

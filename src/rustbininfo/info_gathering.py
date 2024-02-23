@@ -52,6 +52,9 @@ def get_dependencies(target: pathlib.Path) -> Set[Crate]:
             dep = dep[: dep.index(b"\x00")]
         except:
             pass
+
+        if dep == b'':
+            continue
         log.debug(f"Found dependency : {dep}")
         c = Crate.from_depstring(dep.decode(), fast_load=False)
         if c.name != "rustc-demangle":

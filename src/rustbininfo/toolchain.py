@@ -17,7 +17,8 @@ class ToolchainFactory:
         Returns:
             Toolchain
         """
-        from .toolchains import DefaultToolchain, MuslToolchain
+        from .toolchains import (DefaultToolchain, MuslToolchain,
+                                 MuslToolchain_x86)
 
         try:
             version, tc_name = name.split("-", 1)
@@ -31,6 +32,9 @@ class ToolchainFactory:
 
             if MuslToolchain.match_toolchain(tc_name):
                 return MuslToolchain(version, tc_name)
+       
+            elif MuslToolchain_x86.match_toolchain(tc_name):
+                return MuslToolchain_x86(version, tc_name)
 
             else:
                 return DefaultToolchain(version, tc_name)
