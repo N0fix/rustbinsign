@@ -30,15 +30,16 @@ class MuslToolchain(DefaultToolchain):
         self._default_template = {"release": {"debug": 2, "strip": "none"}}
         self.musl_lib_path = None
         self.crate_transforms = TRANSFORMS
+        self.musl_target_name = "x86_64-linux-musl-native.tgz"
 
     @classmethod
     def match_toolchain(cls, toolchain_name: str):
-        return toolchain_name == "x86_64-unknown-linux-musl"
+        return "x86_64-unknown-linux-musl" == toolchain_name
 
     def install(self) -> "self":
         log.warning("MUSL toolchain requieres musl, musl-dev and musl-tools packages to be installed.")
         log.debug(f"Downloading and installing toolchain version {self.name}")
-        rustup_install_toolchain(self.name)
+        rustup_install_toolchain(self.version, self.toolchain_name)
 
         musl_dir = get_default_dest_dir().joinpath("x86_64-linux-musl-native")
         if musl_dir.exists():
@@ -64,7 +65,8 @@ class MuslToolchain(DefaultToolchain):
 
     def get_libs(self):
         if self.libs is None:
-            self.libs = self._gen_libs()
+            # self.libs = self._gen_libs()
+            self.libs=[]
             self.libs = self._filter_libs(self.libs, lambda x: not "driver" in x.name)
             self.libs += self._gen_hello_world(self._default_template)
 
@@ -73,7 +75,7 @@ class MuslToolchain(DefaultToolchain):
     def _download_musl(self):
         log.debug("Download musl")
 
-        name = "x86_64-linux-musl-native.tgz"
+        name = self.musl_target_name
         url = f"https://musl.cc/{name}"
 
         headers = {"User-Agent": "rustbininfo (https://github.com/N0fix/rustbininfo)"}
@@ -110,6 +112,24 @@ class MuslToolchain(DefaultToolchain):
         }
 
         if template is not None:
-            args["template"]: template
+            args["template"] = template
 
         return CompilationUnit(self, CompilationCtx(**args)).compile_remote_crate(c)
+
+
+class MuslToolchain_x86(MuslToolchain):
+    musl_lib_path: pathlib.Path
+
+    def __init__(
+        self,
+        version: str,
+        toolchain_name: Optional[str] = None,
+    ):
+        assert os.name != "nt"
+
+        super().__init__(version, toolchain_name)
+        self.musl_target_name = "i686-linux-musl-native.tgz"
+
+    @classmethod
+    def match_toolchain(cls, toolchain_name: str):
+        return "i686-unknown-linux-musl" == toolchain_name

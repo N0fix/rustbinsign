@@ -10,8 +10,8 @@ class ToolchainModel(ABC):
     libs: Optional[List[pathlib.Path]] = None
     compile_unit: CompilationUnit
     _default_template: Optional[Dict] = None
-    _toolchain_name: Optional[str] = None
-    _version: str
+    toolchain_name: Optional[str] = None
+    version: str
 
     @classmethod
     def match_toolchain(cls, toolchain_name: str):
@@ -31,8 +31,8 @@ class ToolchainModel(ABC):
 
     @property
     def name(self):
-        name = self._version
-        if self._toolchain_name is not None and self._toolchain_name:
-            name = f"{name}-{self._toolchain_name}"
+        name = self.version
+        if self.toolchain_name is not None and self.toolchain_name:
+            name = f"{name}-{self.toolchain_name}"
 
         return name

@@ -1,22 +1,23 @@
 import shlex
 import subprocess
-from typing import Optional
-from .logger import logger as log
 
 
-def rustup_install_toolchain(toolchain):
-    log.warning(
-        "Don't forget to install your toolchain first using 'rustup install {toolchain}'"
-    )
+def rustup_install_toolchain(version, toolchain_name):
     subprocess.run(
-        shlex.split(f"rustup install {toolchain} --profile minimal"),
+        shlex.split(f"rustup target add {toolchain_name}"),
         check=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
     subprocess.run(
-        shlex.split(f"rustup component add rustc-dev --toolchain {toolchain}"),
-        check=True,
+        shlex.split(f"rustup install {version}-{toolchain_name} --profile minimal"),
+        # check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    subprocess.run(
+        shlex.split(f"rustup component add rustc-dev --toolchain {version}-{toolchain_name}"),
+        # check=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
