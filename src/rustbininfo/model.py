@@ -56,14 +56,26 @@ class Crate(BaseModel):
 
     def model_post_init(self, __context) -> None:
         if not self._fast_load:
-            self._get_metadata()
+            _ = self.metadata # triggers getter
 
-    def _get_metadata(self):
+    @property
+    def metadata(self):
+        if getattr(self, "_metadata", None) is None:
+            self._metadata = self._get_metadata()
+
+        return self._metadata
+
+    @metadata.setter
+    def metadata(self, value):
+        self._metadata = value
+
+    def _get_metadata(self) -> dict:
         log.debug(f"Downloading metadata for {self.name}")
         uri = _urljoin(self._api_base_url, *["api", "v1", "crates", self.name])
         headers = {"User-Agent": "rustbininfo (https://github.com/N0fix/rustbininfo)"}
         res = requests.get(uri, timeout=20, headers=headers)
         result = json.loads(res.text)
+        # self._metadata = result
         for version in result["versions"]:
             self._available_versions.append(version["num"])
             if version["num"] == self.version:
@@ -77,6 +89,8 @@ class Crate(BaseModel):
         self.repository = result["crate"]["repository"]
 
         assert self._version_info is not None
+
+        return result
 
     def download(self, destination_directory: Optional[Path] = None) -> Path:
         log.info(f"Downloading crate {self.name}")

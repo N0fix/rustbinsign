@@ -15,6 +15,7 @@ semver = "^3.0.2"
 parse = "^1.20.0"
 rich = "^13.7.0"
 gitpython = "^3.1.41"
+pytz = "^2024.1"
 
 
 [tool.poetry.group.dev.dependencies]

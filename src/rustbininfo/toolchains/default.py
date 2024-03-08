@@ -30,7 +30,7 @@ class DefaultToolchain(ToolchainModel):
         self.toolchain_name = toolchain_name
         self.compile_unit = CompilationUnit(self)
         self.crate_transforms = {}
-        self._default_template = None
+        self._default_template = {}
 
     @classmethod
     def match_toolchain(cls, toolchain_name: str):

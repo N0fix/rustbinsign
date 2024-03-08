@@ -1,3 +1,4 @@
+import hashlib
 import pathlib
 import re
 from typing import List, Optional, Set, Tuple
@@ -46,7 +47,7 @@ def get_rustc_version(target: pathlib.Path) -> Tuple[str, str]:
 def get_dependencies(target: pathlib.Path) -> Set[Crate]:
     result = []
     data = open(target, "rb").read()
-    res = re.findall(rb"cargo.registry.src.[^\\\/]+.([^\\\/]+)", data)
+    res = re.findall(rb"registry.src.[^\\\/]+.([^\\\/]+)", data)
     for dep in set(res):
         try:
             dep = dep[: dep.index(b"\x00")]
@@ -84,15 +85,19 @@ def guess_toolchain(target_content: bytes) -> Optional[str]:
     return None
 
 
-def guess_linux_or_win(data: bytes):
-    res = re.findall(rb"cargo/registry/src/github.com", data)
-    nb_linux = len(res)
+def imphash(dependencies: List[Crate]):
+    md5 = hashlib.md5()
+    sorted_list = sorted([str(d) for d in dependencies])
+    for dep in sorted_list:
+        md5.update(str(dep).encode())
 
+    return md5.hexdigest()
 
 class TargetRustInfo(BaseModel):
     rustc_version: str
     rustc_commit_hash: str
     dependencies: List[Crate]
+    rust_dependencies_import_hash: str
     guessed_toolchain: Optional[str] = None
     guess_is_debug_build: bool
 
@@ -107,6 +112,7 @@ class TargetRustInfo(BaseModel):
             rustc_commit_hash=commit,
             rustc_version=version,
             dependencies=dependencies,
+            rust_dependencies_import_hash=imphash(dependencies),
             guessed_toolchain=guess_toolchain(content),
             guess_is_debug_build=guess_is_debug(path),
         )

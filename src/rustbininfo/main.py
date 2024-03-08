@@ -1,13 +1,14 @@
+import datetime
 import json
 import logging
 import pathlib
 import sys
-import tarfile
 from argparse import (ArgumentDefaultsHelpFormatter, ArgumentParser,
                       RawDescriptionHelpFormatter)
 from enum import Enum
 from typing import List
 
+import pytz
 from rich import print
 
 from .info_gathering import TargetRustInfo, get_dependencies, get_rustc_version
@@ -173,6 +174,12 @@ def parse_args():
 
     std_parser.add_argument("toolchain", help="Specific toolchain. Use target triple.")
 
+    compiletime_parser = subparsers.add_parser(
+        "guess_project_creation_timestamp",
+        help="Tries to guess the compilation date based on dependencies version",
+    )
+    compiletime_parser.add_argument("target", type=pathlib.Path)
+
     return parser
 
 
@@ -264,7 +271,31 @@ def main_cli():
         case "get_std_lib":
             for lib in tc.get_libs():
                 print(lib)
+            
+        case "guess_project_creation_timestamp":
+            
+            ti = TargetRustInfo.from_target(args.target)
+            utc=pytz.UTC
+            min_date, max_date = utc.localize(datetime.datetime.fromtimestamp(0)), utc.localize(datetime.datetime.now())
 
+            for dep in ti.dependencies:
+                dep: Crate = dep
+                # print(dep.metadata)
+                for i, version in enumerate(dep.metadata["versions"]):
+                    if version["num"] == dep.version:
+                        d = datetime.datetime.strptime(version["created_at"], '%Y-%m-%dT%H:%M:%S.%f%z')
+                        min_date = max(d, min_date)
+                        break
+
+            for dep in ti.dependencies:
+                for i, version in enumerate(dep.metadata["versions"]):
+                    if version["num"] == dep.version:
+                        if i != 0:
+                            d = datetime.datetime.strptime(dep.metadata["versions"][i-1]["created_at"], '%Y-%m-%dT%H:%M:%S.%f%z')
+                            if d > min_date:
+                                max_date = d
+                            break
+            print(f'Latest dependency was added between {min_date} and {max_date}')
 
 if __name__ == "__main__":
     main_cli()
