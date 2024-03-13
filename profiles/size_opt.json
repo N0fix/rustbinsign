@@ -1,0 +1,12 @@
+{
+    "profile": {
+        "release": {
+            "debug": 1,
+            "strip": "none",
+            "opt-level": "z",
+            "lto": true,
+            "codegen-units": 1,
+            "incremental": false
+        }
+    }
+}

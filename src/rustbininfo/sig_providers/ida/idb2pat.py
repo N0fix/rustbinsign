@@ -6,6 +6,7 @@ import sys
 import tempfile
 from enum import Enum, auto
 
+import ida_name
 import idc
 from idaapi import *
 
@@ -397,6 +398,8 @@ def make_func_sig(config, func):
     publics = []  # type: idc.ea_t
     refs = {}  # type: dict(idc.ea_t, idc.ea_t)
     variable_bytes = set([])  # type: set of idc.ea_t
+    found_x86thunk_call = False
+    call_next_pop = False
 
     while ea != BADADDR and ea < func.end_ea:
         logger.debug("ea: %s", hex(ea))
@@ -409,7 +412,28 @@ def make_func_sig(config, func):
             logger.debug("has a name")
             publics.append(ea)
 
+        if instruction.get_canon_mnem() == "call" and ida_name.get_ea_name(instruction.ops[0].addr).startswith("__x86.get_pc_thunk"):
+            found_x86thunk_call = True
+
+        elif instruction.get_canon_mnem() == "add" and found_x86thunk_call:
+            found_x86thunk_call = False
+            address_operand_start = ea + instruction.ops[1].offb
+            address_operand_end = address_operand_start + idc.get_item_size(
+                address_operand_start
+            )
+
+            for i in range(address_operand_start, address_operand_end):
+                variable_bytes.add(i)
+
+        if call_next_pop:
+            found_x86thunk_call = True
+            call_next_pop = False
+
+        if instruction.get_canon_mnem() == "call" and get_bytes(ea, instruction.size) == b"\xe8\x00\x00\x00\x00":
+            call_next_pop = True
+
         for operand in instruction.ops:
+
             if operand.type == idc.o_void:
                 break
 
@@ -673,16 +697,17 @@ def main():
 
     c = Config(min_func_length=5)
     update_config(c)
-    if c.logenabled:
-        h = logging.FileHandler(c.logfile)
-        h.setLevel(c.loglevel)
-        logging.getLogger().addHandler(h)
-
+    # if c.logenabled:
+    # h = logging.FileHandler('/tmp/idb2pat.log')
+    # h.setLevel(c.loglevel)
+    # logging.getLogger().addHandler(h)
+    # g_logger.info(idc.ARGV[0])
+    # g_logger.info(idc.ARGV[1])
     filename = idc.ARGV[1]
 
     if filename is None:
         g_logger.debug("No file selected")
-        return
+        ida_pro.qexit(0)
 
     sigs = make_func_sigs(c)
 

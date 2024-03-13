@@ -1,7 +1,10 @@
 import os
 import pathlib
+import shlex
 import subprocess
+import sys
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from typing import List, Optional
 
 from parse import *
@@ -45,14 +48,38 @@ class IDAProvider(BaseSigProvider):
     def generate_signature(
         self, libs: List[pathlib.Path], sig_name: Optional[str]
     ) -> pathlib.Path:
-        log.debug("Generating pattern files...")
-        pats: List[pathlib.Path] = self._generate_pattern_files(libs)
+        POOL_SIZE = 15
+        log.info(f"Generating pattern files with {POOL_SIZE} threads...")
+        pats = []
+        futures = []
+        fails = 0
+        tp = ThreadPoolExecutor(max_workers=POOL_SIZE)
+
+        def routine(self, lib):
+            return self._generate_pattern(lib)
+
+        for lib in libs:
+            futures.append(tp.submit(routine, self, lib))
+
+        for fut in futures:
+            try:
+                pats.append(fut.result())
+
+            except Exception as exc:
+                print(exc)
+                fails += 1
+
+        log.info(f"{len(pats)} pat generated. {fails} failed.")
+
         if sig_name is None:
             sig_name = f"rust-std-{self.version}-{os.name}"
 
         return self._generate_sig_file(pats, sig_name)
 
-    def _generate_sig_file(self, pats: [pathlib.Path], sig_name):
+    def _generate_sig_file(self, pats: List[pathlib.Path], sig_name):
+        if len(pats) == 0:
+            raise SignatureError
+
         cmdline = [f"{str(self.cfg.sigmake)}", "-t5", f'-n"{sig_name}"', "-s"]
         for pat in pats:
             cmdline.append(str(pat))
@@ -77,17 +104,23 @@ class IDAProvider(BaseSigProvider):
                 return self._generate_sig_file(pats, sig_name)
 
         if p.returncode != 0:
+            print(p.stderr, sys.stderr)
+            print(p.stdout, sys.stdout)
             raise SignatureError
 
         return f"{sig_name}.sig"
 
     def _generate_pattern(self, libfile) -> pathlib.Path:
         assert libfile.exists()
-        log.info(f"Gen for {libfile}...")
+        log.debug(f"Gen for {libfile}...")
         script_path = pathlib.Path(__file__).parent.resolve().joinpath("idb2pat.py")
         target_path = (
             pathlib.Path(os.getcwd()).joinpath(libfile.name).with_suffix(".pat")
         )
+
+        if target_path.exists(): # Don't resign if signed already
+            return target_path
+        
         assert script_path.exists()
         if os.name != "nt":
             script_cmd = f'-S{script_path} "{str(target_path)}"'
@@ -97,20 +130,23 @@ class IDAProvider(BaseSigProvider):
         env = os.environ
         env["TVHEADLESS"] = "1"  # requiered for IDAt linux
         env["IDALOG"] = str(pathlib.Path(tempfile.gettempdir(), "idalog.txt"))
-        subprocess.run(
-            [
+        env["TERM"] = "xterm"
+        args = [
                 f"{self.cfg.idat}",
                 script_cmd,
                 "-a",
                 "-A",
                 f"{str(libfile)}",
-            ],
+            ]
+
+        subprocess.run(
+            args,
             stdout=subprocess.DEVNULL,
             check=True,
             # shell=True,
             env=env,
         )
-        log.info(f"Saved to {target_path}")
+        log.debug(f"Saved pat file to {target_path}")
         return target_path
 
     def _generate_pattern_files(self, libs) -> List[pathlib.Path]:
