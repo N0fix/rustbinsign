@@ -11,6 +11,8 @@ from typing import List
 import pytz
 from rich import print
 
+from rustbininfo.sig_providers.binja.binja import BinjaProvider
+from rustbininfo.sig_providers.binja.model import ConfigBinja
 from .info_gathering import TargetRustInfo, get_dependencies, get_rustc_version
 from .logger import get_log_handler, logger
 from .model import CompilationCtx, Config, Crate
@@ -49,6 +51,9 @@ def parse_args():
     ida_parser = sig_subparsers.add_parser("IDA")
     ida_parser.add_argument("idat_path", type=pathlib.Path)
     ida_parser.add_argument("sigmake_path", type=pathlib.Path)
+
+    binja_parser = sig_subparsers.add_parser("Binja")
+    binja_parser.add_argument("--multiprocess", type=bool, required=False, default=False) # Might sometimes Nuke PC
 
     toolchain_name_parser = ArgumentParser(add_help=False)
     toolchain_name_parser.add_argument(
@@ -206,6 +211,8 @@ def main_cli():
                 )
             )
 
+        elif args.provider == "Binja":
+            provider = BinjaProvider(ConfigBinja(multiprocess=args.multiprocess))
         else:
             NotImplementedError(f"Provider {args.provider} do not exists")
 
