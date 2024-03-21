@@ -5,12 +5,8 @@ import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 from rich import print
-from rustbininfo import (
-    Crate,
-    TargetRustInfo,
-    get_min_max_update_time,
-    get_rustc_version,
-)
+from rustbininfo import (Crate, TargetRustInfo, get_min_max_update_time,
+                         get_rustc_version)
 
 from .logger import get_log_handler, logger
 from .sig_providers.ida.ida import IDAProvider
@@ -54,8 +50,8 @@ def parse_args():
         type=str,
         default=None,
         dest="toolchain",
-        help="Specific toolchain to use (optional). Use target triple.",
-        required=False,
+        help="Specific toolchain to use. Use target triple with version (e.g 1.70.0-x86_64-unknown-linux-musl)",
+        required=True,
     )
 
     profile_parser = ArgumentParser(add_help=False)
@@ -92,6 +88,7 @@ def parse_args():
         dest="logLevel",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level",
+        default="INFO"
     )
 
     ## Subcommand parsers

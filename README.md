@@ -23,7 +23,7 @@ rustbinsign --help
 # Help
 
 ```bash
-usage: rbi [-h] [-l {DEBUG,INFO,WARNING,ERROR,CRITICAL}] {info,download,download_sign,sign_stdlib,sign_target,sign_libs,get_std_lib} ...
+usage: rbs [-h] [-l {DEBUG,INFO,WARNING,ERROR,CRITICAL}] {info,download,download_sign,sign_stdlib,sign_target,sign_libs,get_std_lib} ...
 
 This script aims at facilitate creation of signatures for rust executables. It can detect dependencies and rustc version used in a target, and create signatures using a signature provider.
 
