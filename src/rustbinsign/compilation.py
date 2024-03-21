@@ -10,10 +10,10 @@ import requests
 import toml
 from git import Repo, TagReference
 from rich import print
+from rustbininfo import Crate
 
-from .exceptions import CompilationError
 from .logger import logger as log
-from .model import CompilationCtx, Crate
+from .model import CompilationCtx
 from .util import extract_tarfile, get_default_dest_dir
 
 
@@ -135,13 +135,14 @@ class CompilationUnit:
             # "run",
             # self.tc.name,
             "cargo",
-            f'+{self.tc.version}',
+            f"+{self.tc.name}",
             "build",
-            "--target",
-            self.tc.toolchain_name
+            # "--target",
+            # self.tc.toolchain_name,
         ]
 
         args += list(post_verb)
+        log.info(args)
 
         if features:
             args.append("--features")
@@ -252,7 +253,10 @@ class CompilationUnit:
         compile_dst = project_path.joinpath("target")
         # print("PRE", f'{compile_dst.absolute()}/*{self.tc.toolchain_name}*')
         # print(list(glob.glob(f'{compile_dst.absolute()}/*{self.tc.toolchain_name}*')))
-        compile_dst = list(glob.glob(f'{compile_dst.absolute()}/*{self.tc.toolchain_name}*'))[0]
+        compile_dst = list(
+            # glob.glob(f"{compile_dst.absolute()}/*{self.tc.toolchain_name}*")
+            glob.glob(f"{compile_dst.absolute()}/*{self.ctx.profile}*")
+        )[0]
         # print(compile_dst)
         # print("POST")
         if profile is not None:
@@ -276,12 +280,11 @@ class CompilationUnit:
             directories[:] = [
                 d for d in directories if d not in (".fingerprint", "build")
             ]
-
             for filename in filenames:
                 for routine in seeked_files:
                     if routine(filename):
                         results.append(Path(root).joinpath(filename))
-        print(results)
+
         return results
 
     def compile_crate(
@@ -300,8 +303,8 @@ class CompilationUnit:
         repo_path = self._setup_repo(crate)
         if repo_path is not None:
             lib_template = self.ctx.template.copy()
-            if lib_template.get('lib', None):
-                del lib_template['lib']
+            if lib_template.get("lib", None):
+                del lib_template["lib"]
             setup_toml(repo_path.joinpath("Cargo.toml"), lib_template)
             self._compile_extra(repo_path, crate, features)
             results += self._get_result_files(repo_path)

@@ -16,7 +16,9 @@ def rustup_install_toolchain(version, toolchain_name):
         stderr=subprocess.DEVNULL,
     )
     subprocess.run(
-        shlex.split(f"rustup component add rustc-dev --toolchain {version}-{toolchain_name}"),
+        shlex.split(
+            f"rustup component add rustc-dev --toolchain {version}-{toolchain_name}"
+        ),
         # check=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,

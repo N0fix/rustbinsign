@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "rustbininfo"
+name = "rustbinsign"
 version = "0.1.0"
 description = ""
 authors = ["Nofix <16479266+N0fix@users.noreply.github.com>"]
@@ -15,7 +15,7 @@ semver = "^3.0.2"
 parse = "^1.20.0"
 rich = "^13.7.0"
 gitpython = "^3.1.41"
-pytz = "^2024.1"
+rustbininfo = "0.2.0"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -27,5 +27,5 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-rustbininfo = "rustbininfo.main:main_cli"
-rbi = "rustbininfo.main:main_cli"
+rustbinsign = "rustbinsign.main:main_cli"
+rbs = "rustbinsign.main:main_cli"

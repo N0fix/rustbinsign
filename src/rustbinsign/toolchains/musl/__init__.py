@@ -3,10 +3,11 @@ import pathlib
 from typing import Callable, Dict, List, Optional
 
 import requests
+from rustbininfo import Crate
 
 from ...compilation import CompilationUnit
 from ...logger import logger as log
-from ...model import CompilationCtx, Crate
+from ...model import CompilationCtx
 from ...rustup import get_rustup_home, rustup_install_toolchain
 from ...util import extract_tarfile, get_default_dest_dir
 from ..default import DefaultToolchain
@@ -37,7 +38,9 @@ class MuslToolchain(DefaultToolchain):
         return "x86_64-unknown-linux-musl" == toolchain_name
 
     def install(self) -> "self":
-        log.warning("MUSL toolchain requieres musl, musl-dev and musl-tools packages to be installed.")
+        log.warning(
+            "MUSL toolchain requieres musl, musl-dev and musl-tools packages to be installed."
+        )
         log.debug(f"Downloading and installing toolchain version {self.name}")
         rustup_install_toolchain(self.version, self.toolchain_name)
 
@@ -66,7 +69,7 @@ class MuslToolchain(DefaultToolchain):
     def get_libs(self):
         if self.libs is None:
             # self.libs = self._gen_libs()
-            self.libs=[]
+            self.libs = []
             self.libs = self._filter_libs(self.libs, lambda x: not "driver" in x.name)
             self.libs += self._gen_hello_world(self._default_template)
 
@@ -78,7 +81,7 @@ class MuslToolchain(DefaultToolchain):
         name = self.musl_target_name
         url = f"https://musl.cc/{name}"
 
-        headers = {"User-Agent": "rustbininfo (https://github.com/N0fix/rustbininfo)"}
+        headers = {"User-Agent": "rustbinsign (https://github.com/N0fix/rustbinsign)"}
         res = requests.get(url, timeout=20, headers=headers)
         assert res.status_code == 200
 

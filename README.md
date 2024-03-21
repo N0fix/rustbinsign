@@ -14,10 +14,10 @@ Search for dependencies inside a compiled rust executable, download them and cre
 # Install
 
 ```bash
-git clone https://github.com/N0fix/rustbininfo
-cd rustbininfo
+git clone https://github.com/N0fix/rustbinsign
+cd rustbinsign
 poetry install
-rustbininfo --help
+rustbinsign --help
 ```
 
 # Help
@@ -45,13 +45,13 @@ mode:
 
 Usage examples:
 
- rustbininfo -l DEBUG info 'challenge.exe'
- rustbininfo download_sign IDA 'C:\Program Files\IDA Pro\idat64.exe' .\sigmake.exe hyper-0.14.27 1.70.0-x86_64-unknown-linux-gnu
- rustbininfo download hyper-0.14.27
- rustbininfo sign_stdlib --template ./profiles/ivanti_rust_sample.json -t 1.70.0-x86_64-unknown-linux-musl IDA ~/idat64 ~/sigmake
- rustbininfo get_std_lib 1.70.0-x86_64-unknown-linux-musl
- rustbininfo sign_libs -l .\sha2-0.10.8\target\release\sha2.lib -l .\crypt-0.4.2\target\release\crypt.lib IDA 'C:\Program Files\IDA Pro\idat64.exe' .\sigmake.exe
- rustbininfo sign_target -t 1.70.0-x86_64-unknown-linux-musl  --target ~/Downloads/target --no-std --signature_name malware_1.70.0_musl
+ rustbinsign -l DEBUG info 'challenge.exe'
+ rustbinsign download_sign IDA 'C:\Program Files\IDA Pro\idat64.exe' .\sigmake.exe hyper-0.14.27 1.70.0-x86_64-unknown-linux-gnu
+ rustbinsign download hyper-0.14.27
+ rustbinsign sign_stdlib --template ./profiles/ivanti_rust_sample.json -t 1.70.0-x86_64-unknown-linux-musl IDA ~/idat64 ~/sigmake
+ rustbinsign get_std_lib 1.70.0-x86_64-unknown-linux-musl
+ rustbinsign sign_libs -l .\sha2-0.10.8\target\release\sha2.lib -l .\crypt-0.4.2\target\release\crypt.lib IDA 'C:\Program Files\IDA Pro\idat64.exe' .\sigmake.exe
+ rustbinsign sign_target -t 1.70.0-x86_64-unknown-linux-musl  --target ~/Downloads/target --no-std --signature_name malware_1.70.0_musl
 ```
 
 # Example usage
@@ -59,7 +59,7 @@ Usage examples:
 ## Info
 
 ```
-> rustbininfo info C:\Users\user\Documents\flareon2023\infector.exe.mal_ 
+> rustbinsign info C:\Users\user\Documents\flareon2023\infector.exe.mal_ 
 [----    rustc     ----]
 version: ~1.68.2 (9eb3afe9ebe9c7d2b84b71002d44f4a0edac95e0)
 
