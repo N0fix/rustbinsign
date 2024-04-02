@@ -38,7 +38,7 @@ def get_rustc_version(target: pathlib.Path) -> Tuple[str, str]:
     version = _get_version_from_commit(commit)
     if version is None:
         log.debug(f"No tag matching this commit, getting latest version")
-        return _get_latest_rustc_version()
+        return commit, _get_latest_rustc_version()
 
     log.debug(f"Found tag {version}")
     return commit, version
