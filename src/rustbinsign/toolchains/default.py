@@ -2,9 +2,11 @@ import os
 import pathlib
 from typing import Callable, Dict, List, Optional
 
+from rustbininfo import Crate
+
 from ..compilation import CompilationUnit
 from ..logger import logger as log
-from ..model import CompilationCtx, Crate
+from ..model import CompilationCtx
 from ..rustup import get_rustup_home, rustup_install_toolchain
 from .model import ToolchainModel
 

@@ -1,9 +1,10 @@
 import pathlib
 from typing import List, Optional
 
-from ..info_gathering import get_dependencies
+from rustbininfo import Crate, get_dependencies
+
 from ..logger import logger as log
-from ..model import CompilationCtx, Crate
+from ..model import CompilationCtx
 from ..sig_providers.provider_base import BaseSigProvider
 from ..toolchains.model import ToolchainModel
 

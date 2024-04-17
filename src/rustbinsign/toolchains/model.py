@@ -2,8 +2,10 @@ import pathlib
 from abc import ABC
 from typing import Dict, List, Optional
 
+from rustbininfo import Crate
+
 from ..compilation import CompilationUnit
-from ..model import CompilationCtx, Crate
+from ..model import CompilationCtx
 
 
 class ToolchainModel(ABC):

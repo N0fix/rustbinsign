@@ -1,7 +1,7 @@
 import pathlib
 from typing import Optional
 
-from ..model import Crate
+from rustbininfo import Crate
 
 
 def download_subcommand(

@@ -15,7 +15,9 @@ from .model import ConfigIDA
 
 
 class SignatureError(Exception):
-    pass
+    def __init__(self, message="An error occured running IDA"):
+        # Call the base class constructor with the parameters it needs
+        super().__init__(message)
 
 
 def _remove_line(filepath: pathlib.Path, line_number: int):
@@ -78,7 +80,7 @@ class IDAProvider(BaseSigProvider):
 
     def _generate_sig_file(self, pats: List[pathlib.Path], sig_name):
         if len(pats) == 0:
-            raise SignatureError
+            raise SignatureError("No pattern files found")
 
         cmdline = [f"{str(self.cfg.sigmake)}", "-t5", f'-n"{sig_name}"', "-s"]
         for pat in pats:
@@ -118,9 +120,9 @@ class IDAProvider(BaseSigProvider):
             pathlib.Path(os.getcwd()).joinpath(libfile.name).with_suffix(".pat")
         )
 
-        if target_path.exists(): # Don't resign if signed already
+        if target_path.exists():  # Don't resign if signed already
             return target_path
-        
+
         assert script_path.exists()
         if os.name != "nt":
             script_cmd = f'-S{script_path} "{str(target_path)}"'
@@ -132,12 +134,12 @@ class IDAProvider(BaseSigProvider):
         env["IDALOG"] = str(pathlib.Path(tempfile.gettempdir(), "idalog.txt"))
         env["TERM"] = "xterm"
         args = [
-                f"{self.cfg.idat}",
-                script_cmd,
-                "-a",
-                "-A",
-                f"{str(libfile)}",
-            ]
+            f"{self.cfg.idat}",
+            script_cmd,
+            "-a",
+            "-A",
+            f"{str(libfile)}",
+        ]
 
         subprocess.run(
             args,

@@ -1,24 +1,17 @@
-import datetime
 import json
 import logging
 import pathlib
 import sys
-from argparse import (ArgumentDefaultsHelpFormatter, ArgumentParser,
-                      RawDescriptionHelpFormatter)
-from enum import Enum
-from typing import List
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
-import pytz
 from rich import print
+from rustbininfo import (Crate, TargetRustInfo, get_min_max_update_time,
+                         get_rustc_version)
 
-from .info_gathering import TargetRustInfo, get_dependencies, get_rustc_version
 from .logger import get_log_handler, logger
-from .model import CompilationCtx, Config, Crate
-from .rustup import get_rustup_home
 from .sig_providers.ida.ida import IDAProvider
 from .sig_providers.ida.model import ConfigIDA
 from .subcommands.download import download_subcommand
-from .subcommands.info import info_subcommand
 from .subcommands.sign import sign_libs, sign_subcommand
 from .toolchain import ToolchainFactory
 from .util import slugify
@@ -27,13 +20,13 @@ DESCRIPTION = """This script aims at facilitate creation of signatures for rust 
 
 example_text = r"""Usage examples:
 
- rustbininfo -l DEBUG info 'challenge.exe'
- rustbininfo download_sign IDA 'C:\Program Files\IDA Pro\idat64.exe' .\sigmake.exe hyper-0.14.27 1.70.0-x86_64-unknown-linux-gnu
- rustbininfo download hyper-0.14.27
- rustbininfo sign_stdlib --template ./profiles/ivanti_rust_sample.json -t 1.70.0-x86_64-unknown-linux-musl IDA ~/idat64 ~/sigmake
- rustbininfo get_std_lib 1.70.0-x86_64-unknown-linux-musl
- rustbininfo sign_libs -l .\sha2-0.10.8\target\release\sha2.lib -l .\crypt-0.4.2\target\release\crypt.lib IDA 'C:\Program Files\IDA Pro\idat64.exe' .\sigmake.exe
- rustbininfo sign_target -t 1.70.0-x86_64-unknown-linux-musl  --target ~/Downloads/target --no-std --signature_name malware_1.70.0_musl
+ rustbinsign -l DEBUG info 'challenge.exe'
+ rustbinsign download_sign IDA 'C:\Program Files\IDA Pro\idat64.exe' .\sigmake.exe hyper-0.14.27 1.70.0-x86_64-unknown-linux-gnu
+ rustbinsign download hyper-0.14.27
+ rustbinsign sign_stdlib --template ./profiles/ivanti_rust_sample.json -t 1.70.0-x86_64-unknown-linux-musl IDA ~/idat64 ~/sigmake
+ rustbinsign get_std_lib 1.70.0-x86_64-unknown-linux-musl
+ rustbinsign sign_libs -l .\sha2-0.10.8\target\release\sha2.lib -l .\crypt-0.4.2\target\release\crypt.lib IDA 'C:\Program Files\IDA Pro\idat64.exe' .\sigmake.exe
+ rustbinsign sign_target -t 1.70.0-x86_64-unknown-linux-musl  --target ~/Downloads/target --no-std --signature_name malware_1.70.0_musl
  """
 
 
@@ -57,8 +50,8 @@ def parse_args():
         type=str,
         default=None,
         dest="toolchain",
-        help="Specific toolchain to use (optional). Use target triple.",
-        required=False,
+        help="Specific toolchain to use. Use target triple with version (e.g 1.70.0-x86_64-unknown-linux-musl)",
+        required=True,
     )
 
     profile_parser = ArgumentParser(add_help=False)
@@ -95,6 +88,7 @@ def parse_args():
         dest="logLevel",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level",
+        default="INFO"
     )
 
     ## Subcommand parsers
@@ -261,41 +255,18 @@ def main_cli():
         case "sign_stdlib":
             template = template or "default"
             signame = f"{tc.name}-{args.profile}-{slugify(template)}"
-            sign_libs(
-                provider,
-                tc.get_libs(),
-                signame
-            )
+            sign_libs(provider, tc.get_libs(), signame)
             print(f"Generated : {signame}.sig")
 
         case "get_std_lib":
             for lib in tc.get_libs():
                 print(lib)
-            
+
         case "guess_project_creation_timestamp":
-            
             ti = TargetRustInfo.from_target(args.target)
-            utc=pytz.UTC
-            min_date, max_date = utc.localize(datetime.datetime.fromtimestamp(0)), utc.localize(datetime.datetime.now())
+            min_date, max_date = get_min_max_update_time(ti.dependencies)
+            print(f"Latest dependency was added between {min_date} and {max_date}")
 
-            for dep in ti.dependencies:
-                dep: Crate = dep
-                # print(dep.metadata)
-                for i, version in enumerate(dep.metadata["versions"]):
-                    if version["num"] == dep.version:
-                        d = datetime.datetime.strptime(version["created_at"], '%Y-%m-%dT%H:%M:%S.%f%z')
-                        min_date = max(d, min_date)
-                        break
-
-            for dep in ti.dependencies:
-                for i, version in enumerate(dep.metadata["versions"]):
-                    if version["num"] == dep.version:
-                        if i != 0:
-                            d = datetime.datetime.strptime(dep.metadata["versions"][i-1]["created_at"], '%Y-%m-%dT%H:%M:%S.%f%z')
-                            if d > min_date:
-                                max_date = d
-                            break
-            print(f'Latest dependency was added between {min_date} and {max_date}')
 
 if __name__ == "__main__":
     main_cli()

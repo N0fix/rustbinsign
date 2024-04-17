@@ -412,7 +412,9 @@ def make_func_sig(config, func):
             logger.debug("has a name")
             publics.append(ea)
 
-        if instruction.get_canon_mnem() == "call" and ida_name.get_ea_name(instruction.ops[0].addr).startswith("__x86.get_pc_thunk"):
+        if instruction.get_canon_mnem() == "call" and ida_name.get_ea_name(
+            instruction.ops[0].addr
+        ).startswith("__x86.get_pc_thunk"):
             found_x86thunk_call = True
 
         elif instruction.get_canon_mnem() == "add" and found_x86thunk_call:
@@ -429,11 +431,13 @@ def make_func_sig(config, func):
             found_x86thunk_call = True
             call_next_pop = False
 
-        if instruction.get_canon_mnem() == "call" and get_bytes(ea, instruction.size) == b"\xe8\x00\x00\x00\x00":
+        if (
+            instruction.get_canon_mnem() == "call"
+            and get_bytes(ea, instruction.size) == b"\xe8\x00\x00\x00\x00"
+        ):
             call_next_pop = True
 
         for operand in instruction.ops:
-
             if operand.type == idc.o_void:
                 break
 

@@ -1,9 +1,9 @@
 import logging
 
-logger = logging.getLogger("rustbininfo")
+logger = logging.getLogger("rustbinsign")
 logger.addHandler(logging.NullHandler())
 
-LOG_FILENAME = "rustbininfo.log"
+LOG_FILENAME = "rustbinsign.log"
 
 
 def get_log_handler():

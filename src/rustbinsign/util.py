@@ -6,7 +6,7 @@ import unicodedata
 
 
 def get_default_dest_dir() -> pathlib.Path:
-    destination_directory = pathlib.Path(tempfile.gettempdir()) / "ariane"
+    destination_directory = pathlib.Path(tempfile.gettempdir()) / __package__
     destination_directory.mkdir(exist_ok=True)
     return destination_directory
 
