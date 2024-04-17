@@ -266,13 +266,13 @@ class CompilationUnit:
 
         if os.name == "nt":
             seeked_files = [
-                lambda file: Path(file).suffix[1:] == ".dll",
-                lambda file: Path(file).suffix[1:] == ".exe",
+                lambda file: Path(file).suffix[1:] == "dll",
+                lambda file: Path(file).suffix[1:] == "exe",
             ]
 
         else:
             seeked_files = [
-                lambda file: Path(file).suffix[1:] == ".so",
+                lambda file: Path(file).suffix[1:] == "so",
                 lambda file: "." not in file,  # Highly inacurate but fine for now
             ]
 
