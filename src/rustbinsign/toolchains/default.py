@@ -90,8 +90,11 @@ class DefaultToolchain(ToolchainModel):
             self.toolchain_name = target.split("-", 1)[1]
 
         # if "nt" in os.name: #XXX: removed due to potential cross compilation?
-        libs_path = tc_path / pathlib.Path(target) / pathlib.Path("bin")
         libs = []
+        libs_path = tc_path / pathlib.Path(target) / pathlib.Path("bin")
+        libs += list(libs_path.glob("*.dll"))
+
+        libs_path = tc_path / pathlib.Path(target) / pathlib.Path("lib") / pathlib.Path("rustlib") / pathlib.Path(self.toolchain_name) / pathlib.Path("lib")
         libs += list(libs_path.glob("*.dll"))
 
         # else:

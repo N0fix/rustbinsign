@@ -460,7 +460,7 @@ def make_func_sig(config, func):
                 address_operand_end = address_operand_start + idc.get_item_size(
                     address_operand_start
                 )
-
+                print(f'Variable {address_operand_start:x}-{address_operand_end:x}')
                 for i in range(address_operand_start, address_operand_end):
                     variable_bytes.add(i)
 
@@ -539,6 +539,7 @@ def make_func_sig(config, func):
         sig += tail
 
     logger.debug("sig: %s", sig)
+    print(sig)
     return sig
 
 

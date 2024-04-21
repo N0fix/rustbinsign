@@ -75,6 +75,12 @@ def setup_toml(toml_path: Path, template: Dict):
 
     toml.dump(crate_toml, open(toml_path, "w", encoding="utf-8"))
 
+def project_has_lto(toml_path: Path, profile: str):
+    crate_toml = toml.load(toml_path)
+    if crate_toml.get("profile", None) and crate_toml['profile'].get(profile, None):
+        return crate_toml['profile'][profile].get('lto', False) # Terrible, should also match with lto = none etc
+
+    return False
 
 class CompilationUnit:
     tc: "Toolchain"
@@ -135,10 +141,10 @@ class CompilationUnit:
             # "run",
             # self.tc.name,
             "cargo",
-            f"+{self.tc.name}",
+            f"+{self.tc.version}",
             "build",
-            # "--target",
-            # self.tc.toolchain_name,
+            "--target",
+            self.tc.toolchain_name,
         ]
 
         args += list(post_verb)
@@ -255,23 +261,21 @@ class CompilationUnit:
         # print(list(glob.glob(f'{compile_dst.absolute()}/*{self.tc.toolchain_name}*')))
         compile_dst = list(
             # glob.glob(f"{compile_dst.absolute()}/*{self.tc.toolchain_name}*")
-            glob.glob(f"{compile_dst.absolute()}/*{self.ctx.profile}*")
+            glob.glob(f"{compile_dst.absolute()}/{self.tc.toolchain_name}/*{self.ctx.profile}*")
         )[0]
-        # print(compile_dst)
-        # print("POST")
+
         if profile is not None:
             compile_dst = compile_dst.joinpath(profile)
 
         results = []
 
-        if os.name == "nt":
-            seeked_files = [
-                lambda file: Path(file).suffix[1:] == "dll",
-                lambda file: Path(file).suffix[1:] == "exe",
-            ]
+        seeked_files = [
+            lambda file: Path(file).suffix[1:] == "dll",
+            lambda file: Path(file).suffix[1:] == "exe",
+        ]
 
-        else:
-            seeked_files = [
+        if os.name != "nt":
+            seeked_files += [
                 lambda file: Path(file).suffix[1:] == "so",
                 lambda file: "." not in file,  # Highly inacurate but fine for now
             ]
@@ -300,14 +304,16 @@ class CompilationUnit:
         if "full" in features:
             features = ["full"]
 
-        repo_path = self._setup_repo(crate)
-        if repo_path is not None:
-            lib_template = self.ctx.template.copy()
-            if lib_template.get("lib", None):
-                del lib_template["lib"]
-            setup_toml(repo_path.joinpath("Cargo.toml"), lib_template)
-            self._compile_extra(repo_path, crate, features)
-            results += self._get_result_files(repo_path)
+        if project_has_lto(toml_path, 'release'):
+            print("LTO detected !")
+            repo_path = self._setup_repo(crate)
+            if repo_path is not None:
+                lib_template = self.ctx.template.copy()
+                if lib_template.get("lib", None):
+                    del lib_template["lib"]
+                setup_toml(repo_path.joinpath("Cargo.toml"), lib_template)
+                self._compile_extra(repo_path, crate, features)
+                results += self._get_result_files(repo_path)
 
         lib_template = self.ctx.template.copy()
         if self.ctx.lib:

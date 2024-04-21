@@ -17,7 +17,14 @@ class ToolchainFactory:
         Returns:
             Toolchain
         """
-        from .toolchains import DefaultToolchain, MuslToolchain, MuslToolchain_x86
+        from .toolchains import (DefaultToolchain, MinGWToolchain,
+                                 MuslToolchain, MuslToolchain_x86)
+
+        TOOLCHAINS = [
+            MuslToolchain, 
+            MuslToolchain_x86,
+            MinGWToolchain
+        ]
 
         try:
             version, tc_name = name.split("-", 1)
@@ -29,14 +36,11 @@ class ToolchainFactory:
                 except Exception as exc:
                     raise InvalidVersionError from exc
 
-            if MuslToolchain.match_toolchain(tc_name):
-                return MuslToolchain(version, tc_name)
+            for toolchain in TOOLCHAINS:
+                if toolchain.match_toolchain(tc_name):
+                    return toolchain(version, tc_name)
 
-            elif MuslToolchain_x86.match_toolchain(tc_name):
-                return MuslToolchain_x86(version, tc_name)
-
-            else:
-                return DefaultToolchain(version, tc_name)
+            return DefaultToolchain(version, tc_name)
 
         except:
             log.error(f"Invalid toolchain name triplet {name}")
