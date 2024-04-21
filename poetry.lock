@@ -519,13 +519,13 @@ jupyter = ["ipywidgets (>=7.5.1,<9)"]
 
 [[package]]
 name = "rustbininfo"
-version = "0.2.0"
-description = "Get information about stripped rust executables"
+version = "0.3.0"
+description = ""
 optional = false
 python-versions = "<4.0,>=3.10"
 files = [
-    {file = "rustbininfo-0.2.0-py3-none-any.whl", hash = "sha256:164182d5d0cd799992eae72c94b0d6085540e441cd68b5aa4aba8d0d9a429906"},
-    {file = "rustbininfo-0.2.0.tar.gz", hash = "sha256:cb2385987735a62653b110c0c69d1be222e2a1177c2404d24e73f7f177e42041"},
+    {file = "rustbininfo-0.3.0-py3-none-any.whl", hash = "sha256:02e14fd17f9adfda454cf0f68174341924a4c5bbe2350e63fecf0df766c4c4bd"},
+    {file = "rustbininfo-0.3.0.tar.gz", hash = "sha256:097bdb870ade4f149105b315c0ec1205b2f76de6fde61b949498902ca1ca79c9"},
 ]
 
 [package.dependencies]
@@ -607,4 +607,4 @@ zstd = ["zstandard (>=0.18.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "d72e4d05697044943d1846af976f3ef8e1d256a0b18a52c32fe341c8492c0941"
+content-hash = "8b88a85690bbc788ad0f317f56220933363b1c416e542238e1025d04f5161edb"

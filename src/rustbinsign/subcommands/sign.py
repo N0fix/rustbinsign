@@ -1,7 +1,7 @@
 import pathlib
 from typing import List, Optional
 
-from rustbininfo import Crate, get_dependencies
+from rustbininfo import Crate, TargetRustInfo
 
 from ..logger import logger as log
 from ..model import CompilationCtx
@@ -32,7 +32,8 @@ def sign_subcommand(
         exit(1)
 
     log.info("Getting dependencies...")
-    dependencies: List[Crate] = get_dependencies(target)
+    
+    dependencies: List[Crate] = TargetRustInfo(target).dependencies
     # _, version = get_rustc_version(target)
     tc = toolchain.install()
     failed = []
