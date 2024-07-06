@@ -1,3 +1,6 @@
+[![pypi package](https://badge.fury.io/py/rustbinsign.svg)](https://pypi.org/project/rustbinsign)
+[![GitHub](https://img.shields.io/github/license/N0fix/rustbinsign.svg)](https://github.com/N0fix/rustbinsign/blob/master/LICENSE)
+
 Search for dependencies inside a compiled rust executable, download them and create a signature.
 
 - Allows you to create a signature out of dependencies and proper rust stdlib, using the right toolchain.
