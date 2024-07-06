@@ -17,14 +17,14 @@ class ToolchainFactory:
         Returns:
             Toolchain
         """
-        from .toolchains import (DefaultToolchain, MinGWToolchain,
-                                 MuslToolchain, MuslToolchain_x86)
-
-        TOOLCHAINS = [
-            MuslToolchain, 
+        from .toolchains import (
+            DefaultToolchain,
+            MinGWToolchain,
+            MuslToolchain,
             MuslToolchain_x86,
-            MinGWToolchain
-        ]
+        )
+
+        TOOLCHAINS = [MuslToolchain, MuslToolchain_x86, MinGWToolchain]
 
         try:
             version, tc_name = name.split("-", 1)

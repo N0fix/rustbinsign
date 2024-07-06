@@ -1,6 +1,8 @@
 import shlex
 import subprocess
 
+from .logger import logger
+
 
 def rustup_install_toolchain(version, toolchain_name):
     subprocess.run(
@@ -15,14 +17,21 @@ def rustup_install_toolchain(version, toolchain_name):
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
-    subprocess.run(
-        shlex.split(
-            f"rustup component add rustc-dev --toolchain {version}-{toolchain_name}"
-        ),
-        # check=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    try:
+        subprocess.run(
+            shlex.split(
+                f"rustup component add rustc-dev --toolchain {version}-{toolchain_name}"
+            ),
+            # check=True,
+            timeout=2,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+    except subprocess.TimeoutExpired:
+        logger.error(
+            f"rustup component add rustc-dev --toolchain {version}-{toolchain_name} : STATUS [FAILED]"
+        )
 
 
 def get_rustup_home():

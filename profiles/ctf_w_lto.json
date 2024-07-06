@@ -4,7 +4,8 @@
             "debug": 1,
             "strip": "none",
             "opt-level": "z",
-            "panic": "abort"
+            "panic": "abort",
+            "lto": true
         }
     }
 }

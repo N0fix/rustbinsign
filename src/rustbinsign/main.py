@@ -4,6 +4,7 @@ import pathlib
 import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
+import toml
 from rich import print
 from rustbininfo import (Crate, TargetRustInfo, get_min_max_update_time,
                          get_rustc_version)
@@ -12,7 +13,8 @@ from .logger import get_log_handler, logger
 from .sig_providers.ida.ida import IDAProvider
 from .sig_providers.ida.model import ConfigIDA
 from .subcommands.download import download_subcommand
-from .subcommands.sign import sign_libs, sign_subcommand
+from .subcommands.sign import (compile_target_subcommand, sign_libs,
+                               sign_subcommand)
 from .toolchain import ToolchainFactory
 from .util import slugify
 
@@ -21,27 +23,21 @@ DESCRIPTION = """This script aims at facilitate creation of signatures for rust 
 example_text = r"""Usage examples:
 
  rustbinsign -l DEBUG info 'challenge.exe'
- rustbinsign download_sign IDA 'C:\Program Files\IDA Pro\idat64.exe' .\sigmake.exe hyper-0.14.27 1.70.0-x86_64-unknown-linux-gnu
+ rustbinsign download_sign --provider IDA hyper-0.14.27 1.70.0-x86_64-unknown-linux-gnu
  rustbinsign download hyper-0.14.27
- rustbinsign sign_stdlib --template ./profiles/ivanti_rust_sample.json -t 1.70.0-x86_64-unknown-linux-musl IDA ~/idat64 ~/sigmake
+ rustbinsign compile --template ./profile/ctf.json /tmp/rustbininfo/rand_chacha-0.3.1/Cargo.toml 1.70.0-x86_64-unknown-linux-gnu
+ rustbinsign download_compile rand_chacha-0.3.1 1.70.0-x86_64-unknown-linux-gnu
+ rustbinsign sign_stdlib --template ./profiles/ivanti_rust_sample.json -t 1.70.0-x86_64-unknown-linux-musl --provider IDA
  rustbinsign get_std_lib 1.70.0-x86_64-unknown-linux-musl
- rustbinsign sign_libs -l .\sha2-0.10.8\target\release\sha2.lib -l .\crypt-0.4.2\target\release\crypt.lib IDA 'C:\Program Files\IDA Pro\idat64.exe' .\sigmake.exe
- rustbinsign sign_target -t 1.70.0-x86_64-unknown-linux-musl  --target ~/Downloads/target --no-std --signature_name malware_1.70.0_musl
+ rustbinsign sign_libs -l .\sha2-0.10.8\target\release\sha2.lib -l .\crypt-0.4.2\target\release\crypt.lib --provider IDA
+ rustbinsign sign_target -t 1.70.0-x86_64-unknown-linux-musl --provider IDA --target ~/Downloads/target --no-std --signature_name malware_1.70.0_musl
  """
 
 
 def parse_args():
     ## Provider subparsers
     provider = ArgumentParser(add_help=False)
-
-    sig_subparsers = provider.add_subparsers(
-        dest="provider",
-        title="Available signature providers",
-    )
-
-    ida_parser = sig_subparsers.add_parser("IDA")
-    ida_parser.add_argument("idat_path", type=pathlib.Path)
-    ida_parser.add_argument("sigmake_path", type=pathlib.Path)
+    provider.add_argument("--provider", type=str, choices=["IDA"], default="IDA", dest="provider", help="Signature provider. This is the tool that will be used to create signatures.")
 
     toolchain_name_parser = ArgumentParser(add_help=False)
     toolchain_name_parser.add_argument(
@@ -75,6 +71,17 @@ def parse_args():
         required=False,
     )
 
+    compile_with_all_parser = ArgumentParser(add_help=False)
+    compile_with_all_parser.add_argument(
+        "-a",
+        "--all",
+        required=False,
+        action="store_true",
+        help="Compiles examples, benches and tests. Default to False.",
+        dest="compile_all",
+        default=False,
+    )
+
     ## Main parser
     parser = ArgumentParser(
         description=DESCRIPTION,
@@ -88,7 +95,7 @@ def parse_args():
         dest="logLevel",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level",
-        default="INFO"
+        default="INFO",
     )
 
     ## Subcommand parsers
@@ -99,10 +106,31 @@ def parse_args():
     download_parser = subparsers.add_parser(
         "download", help="Download a crate. Exemple: rand_chacha-0.3.1"
     )
+    compile_parser = subparsers.add_parser(
+        "compile",
+        help="Compiles a crate. Exemple: rand_chacha-0.3.1",
+        parents=[compile_with_all_parser, profile_parser, template_parser],
+    )
+    compile_target_parser = subparsers.add_parser(
+        "compile_target",
+        help="Compiles all dependencies detected in target compiled rust executable.",
+        parents=[
+            toolchain_name_parser,
+            compile_with_all_parser,
+            profile_parser,
+            template_parser,
+        ],
+    )
     download_sign_parser = subparsers.add_parser(
         "download_sign",
-        help="Download a crate. And signs it. Exemple: rand_chacha-0.3.1",
+        help="Download a crate and signs it. Exemple: rand_chacha-0.3.1",
         parents=[provider, profile_parser, template_parser],
+    )
+
+    download_compile_parser = subparsers.add_parser(
+        "download_compile",
+        parents=[compile_with_all_parser, profile_parser, template_parser],
+        help="Download a crate and compiles it. Exemple: rand_chacha-0.3.1",
     )
     sign_stdlib_parser = subparsers.add_parser(
         "sign_stdlib",
@@ -131,6 +159,7 @@ def parse_args():
     )
 
     info_parser.add_argument("target", type=pathlib.Path)
+    info_parser.add_argument("-f", "--full", action="store_true", default=False)
 
     sign_stdlib_parser.add_argument(
         "-t",
@@ -144,13 +173,24 @@ def parse_args():
     download_parser.add_argument("crate")
     download_parser.add_argument("--directory", required=False, default=None)
 
+    compile_parser.add_argument("toml_path")
+    compile_parser.add_argument("toolchain")
+
+    compile_target_parser.add_argument("target")
+
     download_sign_parser.add_argument("crate")
     download_sign_parser.add_argument(
         "toolchain",
         type=str,
         help="Specific toolchain to use",
     )
-    download_sign_parser.add_argument("--directory", required=False, default=None)
+
+    download_compile_parser.add_argument("crate")
+    download_compile_parser.add_argument(
+        "toolchain",
+        type=str,
+        help="Specific toolchain to use",
+    )
 
     signature_parser.add_argument("--target", type=pathlib.Path, required=True)
     signature_parser.add_argument("--signature_name", required=True)
@@ -193,21 +233,31 @@ def main_cli():
 
     if args.mode in ("download_sign", "sign_libs", "sign_target", "sign_stdlib"):
         if args.provider == "IDA":
-            provider = IDAProvider(
-                ConfigIDA(
-                    idat=args.idat_path,
-                    sigmake=args.sigmake_path,
-                )
-            )
+            provider = IDAProvider()
 
         else:
             NotImplementedError(f"Provider {args.provider} do not exists")
 
-    if args.mode in ("sign_stdlib", "download_sign", "sign_target"):
+    if args.mode in (
+        "compile",
+        "compile_target",
+        "sign_stdlib",
+        "download_compile",
+        "download_sign",
+        "sign_target",
+    ):
         if args.template:
             template = json.load(open(args.template, "r", encoding="utf-8"))
 
-    if args.mode in ("download_sign", "sign_target", "sign_stdlib", "get_std_lib"):
+    if args.mode in (
+        "compile",
+        "compile_target",
+        "download_sign",
+        "download_compile",
+        "sign_target",
+        "sign_stdlib",
+        "get_std_lib",
+    ):
         tc = (
             ToolchainFactory.from_target_triplet(args.toolchain)
             .set_compilation_profile(args.profile)
@@ -218,15 +268,44 @@ def main_cli():
 
     match args.mode:
         case "info":
-            print(TargetRustInfo.from_target(args.target))
+            print(TargetRustInfo.from_target(args.target, not args.full))
 
         case "download":
             download_subcommand(args.crate, args.directory)
 
+        case "compile":
+            libs = tc.compile_crate(
+                crate=Crate.from_toml(args.toml_path, fast_load=False),
+                toml_path=pathlib.Path(args.toml_path),
+            )
+            [print(lib) for lib in libs]
+
+        case "compile_target":
+            if not args.toolchain:
+                _, version = get_rustc_version(pathlib.Path(args.target))
+                tc = (
+                    ToolchainFactory.from_version(version)
+                    .set_compilation_profile(args.profile)
+                    .set_compilation_template(template)
+                    .install()
+                )
+
+            libs, fails = compile_target_subcommand(
+                pathlib.Path(args.target), tc, args.profile, template
+            )
+            [print(lib) for lib in libs]
+            [print(f"Failed to compile: {fail}", file=sys.stderr) for fail in fails]
+
         case "download_sign":
-            libs = tc.compile_crate(Crate.from_depstring(args.crate))
+            libs = tc.compile_crate(crate=Crate.from_depstring(args.crate))
             signature_path = sign_libs(provider, libs, "tmp")
             print(f"Generated signature : {signature_path}")
+
+        case "download_compile":
+            libs = tc.compile_crate(
+                crate=Crate.from_depstring(args.crate), compile_all=args.compile_all
+            )
+            [print(lib) for lib in libs]
 
         case "sign_libs":
             signature_path = sign_libs(provider, args.lib, "tmp")

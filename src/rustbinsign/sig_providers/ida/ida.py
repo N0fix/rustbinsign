@@ -1,6 +1,6 @@
+import multiprocessing
 import os
 import pathlib
-import shlex
 import subprocess
 import sys
 import tempfile
@@ -44,13 +44,19 @@ def _remove_line(filepath: pathlib.Path, line_number: int):
 class IDAProvider(BaseSigProvider):
     cfg: ConfigIDA
 
-    def __init__(self, cfg: ConfigIDA):
-        self.cfg = cfg
+    def __init__(self, cfg: Optional[ConfigIDA] = None):
+        if cfg is None:
+            self.cfg = ConfigIDA()
+        
+        else:
+            self.cfg = cfg
+
 
     def generate_signature(
         self, libs: List[pathlib.Path], sig_name: Optional[str]
     ) -> pathlib.Path:
-        POOL_SIZE = 15
+        
+        POOL_SIZE = multiprocessing.cpu_count()
         log.info(f"Generating pattern files with {POOL_SIZE} threads...")
         pats = []
         futures = []
@@ -140,6 +146,8 @@ class IDAProvider(BaseSigProvider):
             "-A",
             f"{str(libfile)}",
         ]
+
+        # log.debug(" ".join(args))
 
         subprocess.run(
             args,

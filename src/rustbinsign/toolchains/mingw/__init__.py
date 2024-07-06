@@ -14,7 +14,6 @@ from ..default import DefaultToolchain
 
 
 class MinGWToolchain(DefaultToolchain):
-
     @classmethod
     def match_toolchain(cls, toolchain_name: str):
         return "x86_64-pc-windows-gnu" == toolchain_name
@@ -27,7 +26,6 @@ class MinGWToolchain(DefaultToolchain):
             self.libs += self._gen_hello_world(self._default_template)
 
         return self.libs
-
 
     def _gen_hello_world(self, template: Optional[pathlib.Path]):
         log.info("Generating hello world package")

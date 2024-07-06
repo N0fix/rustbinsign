@@ -22,7 +22,13 @@ class ToolchainModel(ABC):
     def install(self) -> "self":
         ...
 
-    def compile_crate(self, crate: Crate, ctx: CompilationCtx = None):
+    def compile_crate(
+        self,
+        crate: Crate,
+        ctx: CompilationCtx = None,
+        toml_path: Optional[pathlib.Path] = None,
+        compile_all: Optional[bool] = False,
+    ):
         ...
 
     def get_libs(self):

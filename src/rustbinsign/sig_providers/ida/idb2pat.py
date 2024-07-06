@@ -351,6 +351,7 @@ def get_functions():
         yield getn_func(i)
 
 
+
 # TODO: idaapi.get_func(ea)
 _g_function_cache = None
 
@@ -460,7 +461,7 @@ def make_func_sig(config, func):
                 address_operand_end = address_operand_start + idc.get_item_size(
                     address_operand_start
                 )
-                print(f'Variable {address_operand_start:x}-{address_operand_end:x}')
+                # print(f"Variable {address_operand_start:x}-{address_operand_end:x}")
                 for i in range(address_operand_start, address_operand_end):
                     variable_bytes.add(i)
 
@@ -539,13 +540,14 @@ def make_func_sig(config, func):
         sig += tail
 
     logger.debug("sig: %s", sig)
-    print(sig)
+    # print(sig)
     return sig
 
 
 def make_func_sigs(config):
     logger = logging.getLogger("idb2pat:make_func_sigs")
     sigs = []
+
     if config.mode == ConfigMode.USER_SELECT_FUNCTION:
         f = choose_func("Choose Function:", BADADDR)
         if f is None:
@@ -630,7 +632,9 @@ def make_func_sigs(config):
 
     elif config.mode == ConfigMode.ALL_FUNCTIONS:
         n = get_func_qty()
-        for i, f in enumerate(get_functions()):
+        fns = list(get_functions())
+        n = len(fns)
+        for i, f in enumerate(fns):
             try:
                 logger.info(
                     "[ %d / %d ] %s %s", i + 1, n, get_name(f.start_ea), hex(f.start_ea)

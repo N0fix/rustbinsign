@@ -43,12 +43,25 @@ class DefaultToolchain(ToolchainModel):
         rustup_install_toolchain(self.version, self.toolchain_name)
         return self
 
-    def compile_crate(self, crate: Crate, ctx: Optional[CompilationCtx] = None):
+    def compile_crate(
+        self,
+        crate: Crate,
+        ctx: Optional[CompilationCtx] = None,
+        toml_path: Optional[pathlib.Path] = None,
+        compile_all: Optional[bool] = False,
+    ):
         if ctx is None:
             ctx = CompilationCtx(template=self._default_template, profile=self._profile)
 
         unit = CompilationUnit(self, ctx)
-        return unit.compile_remote_crate(crate, self.crate_transforms.get(crate.name))
+        if toml_path:
+            return unit.compile_crate(crate, toml_path, compile_all)
+
+        return unit.compile_remote_crate(
+            crate,
+            crate_transform=self.crate_transforms.get(crate.name),
+            compile_all=compile_all,
+        )
 
     def get_libs(self):
         if self.libs is None:
@@ -94,7 +107,14 @@ class DefaultToolchain(ToolchainModel):
         libs_path = tc_path / pathlib.Path(target) / pathlib.Path("bin")
         libs += list(libs_path.glob("*.dll"))
 
-        libs_path = tc_path / pathlib.Path(target) / pathlib.Path("lib") / pathlib.Path("rustlib") / pathlib.Path(self.toolchain_name) / pathlib.Path("lib")
+        libs_path = (
+            tc_path
+            / pathlib.Path(target)
+            / pathlib.Path("lib")
+            / pathlib.Path("rustlib")
+            / pathlib.Path(self.toolchain_name)
+            / pathlib.Path("lib")
+        )
         libs += list(libs_path.glob("*.dll"))
 
         # else:

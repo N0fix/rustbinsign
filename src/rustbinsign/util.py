@@ -11,23 +11,24 @@ def get_default_dest_dir() -> pathlib.Path:
     return destination_directory
 
 
-def extract_tarfile(tar_path: pathlib.Path):
+def extract_tarfile(tar_path: pathlib.Path) -> pathlib.Path:
+    """Should only be used on crates.io downloaded crates
+
+    Args:
+        tar_path (pathlib.Path)
+
+    Returns:
+        pathlib.Path: directory with extracted content
+    """
     assert tar_path.exists()
 
     tar = tarfile.open(tar_path)
     tar.extractall(path=tar_path.parent)
+    members = tar.members
+    assert len(members) != 0  # should contain content
+    result_path = members[0].name.split("/")[0]
     tar.close()
-
-    if ".gz" in tar_path.suffixes:
-        tar_path = tar_path.with_suffix("")
-
-    if ".tar" in tar_path.suffixes:
-        tar_path = tar_path.with_suffix("")
-
-    if ".tgz" in tar_path.suffixes:
-        tar_path = tar_path.with_suffix("")
-
-    return tar_path
+    return pathlib.Path(tar_path.parent).joinpath(result_path)
 
 
 # Taken from https://stackoverflow.com/a/295466
