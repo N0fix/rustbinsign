@@ -6,6 +6,7 @@ import sys
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Optional
+from multiprocessing.pool import ThreadPool
 
 from parse import *
 
@@ -47,15 +48,13 @@ class IDAProvider(BaseSigProvider):
     def __init__(self, cfg: Optional[ConfigIDA] = None):
         if cfg is None:
             self.cfg = ConfigIDA()
-        
+
         else:
             self.cfg = cfg
-
 
     def generate_signature(
         self, libs: List[pathlib.Path], sig_name: Optional[str]
     ) -> pathlib.Path:
-        
         POOL_SIZE = multiprocessing.cpu_count()
         log.info(f"Generating pattern files with {POOL_SIZE} threads...")
         pats = []
@@ -84,17 +83,8 @@ class IDAProvider(BaseSigProvider):
 
         return self._generate_sig_file(pats, sig_name)
 
-    def _generate_sig_file(self, pats: List[pathlib.Path], sig_name):
-        if len(pats) == 0:
-            raise SignatureError("No pattern files found")
-
-        cmdline = [f"{str(self.cfg.sigmake)}", "-t5", f'-n"{sig_name}"', "-s"]
-        for pat in pats:
-            cmdline.append(str(pat))
-        cmdline.append(f"{sig_name}.sig")
-
-        # log.debug(" ".join(cmdline))
-
+    def _run_sig(self, cmdline):
+        log.debug(f'Running command: "{" ".join(cmdline)}"')
         p = subprocess.run(
             cmdline,
             stdout=subprocess.PIPE,
@@ -109,13 +99,45 @@ class IDAProvider(BaseSigProvider):
                 )
                 log.warning(f"Pattern file {filepath} has an error line {line}")
                 _remove_line(pathlib.Path(filepath), line)
-                return self._generate_sig_file(pats, sig_name)
+                return self._run_sig(cmdline)
 
         if p.returncode != 0:
             print(p.stderr, sys.stderr)
             print(p.stdout, sys.stdout)
             raise SignatureError
 
+    def _generate_single_sig(self, pat: pathlib.Path):
+        print(type(pat))
+        assert isinstance(pat, pathlib.Path)
+        cmdline = [
+            f"{str(self.cfg.sigmake)}",
+            "-t5",
+            f'-n"{pat.name}"',
+            "-s",
+            f"{str(pat)}",
+            f"{str(pat)}.sig",
+        ]
+        self._run_sig(cmdline)
+
+    def _generate_single_sigs(self, pats: List[pathlib.Path]):
+        with ThreadPool(10) as p:
+            w = []
+            for pat in pats:
+                w.append(p.apply_async(self._generate_single_sig, args=(pat,)))
+            [_.get() for _ in w]
+
+    def _generate_sig_file(self, pats: List[pathlib.Path], sig_name):
+        if len(pats) == 0:
+            raise SignatureError("No pattern files found")
+
+        self._generate_single_sigs(pats)
+
+        cmdline = [f"{str(self.cfg.sigmake)}", "-t5", f'-n"{sig_name}"', "-s"]
+        for pat in pats:
+            cmdline.append(str(pat))
+        cmdline.append(f"{sig_name}.sig")
+
+        self._run_sig(cmdline)
         return f"{sig_name}.sig"
 
     def _generate_pattern(self, libfile) -> pathlib.Path:

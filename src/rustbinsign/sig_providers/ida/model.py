@@ -17,7 +17,7 @@ class ConfigIDA(Config):
         if not shutil.which("idat64"):
             print('Could not find "idat64" in your Path, aborting.', file=sys.stderr)
             exit(1)
-        
+
         if not shutil.which("sigmake"):
             print('Could not find "sigmake" in your Path, aborting.', file=sys.stderr)
             exit(1)

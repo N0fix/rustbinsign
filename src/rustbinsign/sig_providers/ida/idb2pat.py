@@ -351,7 +351,6 @@ def get_functions():
         yield getn_func(i)
 
 
-
 # TODO: idaapi.get_func(ea)
 _g_function_cache = None
 
@@ -502,8 +501,7 @@ def make_func_sig(config, func):
 
     sig += " %02X" % (alen)
     sig += " %04X" % (crc)
-    # TODO: does this need to change for 64bit?
-    sig += " %04X" % (func.end_ea - func.start_ea)
+    sig += " %08X" % (func.end_ea - func.start_ea)
 
     # this will be either " :%04d %s" or " :%08d %s"
     public_format = " :%%0%dX %%s" % (config.pointer_size)
@@ -690,22 +688,28 @@ def update_config(config):
 
 
 def main():
-    if os.name == "nt":
-        try:
-            load_and_run_plugin("pdb", 3)  # Creates proper netnodes we need
-        except:
-            pass
-        n = netnode("$ pdb")
-        n.altset(0, get_imagebase())
-        n.supset(0, get_input_file_path()[:-4] + ".pdb")
-        try:
-            load_and_run_plugin("pdb", 3)
+    # if os.name == "nt":
+    try:
+        load_and_run_plugin("pdb", 3)  # Creates proper netnodes we need
+    except:
+        pass
+    n = netnode("$ pdb")
+    n.altset(0, get_imagebase())
+    n.supset(0, get_input_file_path()[:-4] + ".pdb")
+    try:
+        load_and_run_plugin("pdb", 3)
 
-        except:  # If non windows, might not have a .pdb file
-            pass
+    except:  # If non windows, might not have a .pdb file
+        pass
 
     c = Config(min_func_length=5)
     update_config(c)
+    import idc
+
+    import ida_auto
+
+    ida_auto.auto_wait()
+    auto_wait()
     # if c.logenabled:
     # h = logging.FileHandler('/tmp/idb2pat.log')
     # h.setLevel(c.loglevel)

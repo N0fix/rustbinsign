@@ -15,8 +15,8 @@ class CompilationCtx(BaseModel):
     template: Optional[Dict] = {
         "lib": {"crate-type": ["dylib"]},
         "profile": {
-            "release": {"debug": 2, "panic": "abort"},  # Usefull for no-std crates
-            "dev": {"debug": 2, "panic": "abort"},  # Usefull for no-std crates
+            "release": {"debug": 2, "panic": "abort", "strip": "none"},  # Usefull for no-std crates
+            "dev": {"debug": 2, "panic": "abort", "strip": "none"},  # Usefull for no-std crates
         },
     }
     lib: bool = True

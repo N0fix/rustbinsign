@@ -99,8 +99,8 @@ class CompilationUnit:
 
     def _setup_repo(self, crate: Crate) -> Optional[Path]:
         try:
-            repo_path = get_default_dest_dir().joinpath(crate.repository.rsplit('/', 1))
-        
+            repo_path = get_default_dest_dir().joinpath(crate.repository.rsplit("/", 1))
+
         except:
             repo_path = get_default_dest_dir().joinpath(crate.name)
 
@@ -108,19 +108,19 @@ class CompilationUnit:
 
         if requests.get(crate.repository).status_code == 404:
             return None
-        
+
         if not Path(repo_path).exists():
             try:
                 repo = Repo.clone_from(crate.repository, repo_path)
 
             except:
-                log.error(
-                    f"Could not clone {crate.repository} to {repo_path}"
-                )
+                log.error(f"Could not clone {crate.repository} to {repo_path}")
                 return None
-        
+
         else:
-            log.info(f"{repo_path} exists, assuming that his directory is the cloned repo")
+            log.info(
+                f"{repo_path} exists, assuming that his directory is the cloned repo"
+            )
             repo = Repo(repo_path)
 
         # Nothing standard, but most repos should have something like this
@@ -305,11 +305,13 @@ class CompilationUnit:
                     if routine(filename):
                         results.append(Path(root).joinpath(filename))
 
-        def uniq_filename_filter(list_of_paths: List[pathlib.Path]) -> List[pathlib.Path]:
+        def uniq_filename_filter(
+            list_of_paths: List[pathlib.Path],
+        ) -> List[pathlib.Path]:
             result = {}
             for p in list_of_paths:
                 result[p.name] = p
-            
+
             return list(result.values())
 
         results = uniq_filename_filter(results)
@@ -324,13 +326,15 @@ class CompilationUnit:
         # lib: bool = True,
         # crate_transform: Optional[Callable] = None,
     ) -> List[pathlib.Path]:
+        """This is the single entrypoint for compiling crates."""
+        should_compile_all = project_has_lto(toml_path, "release") or compile_all
         results = []
         features = crate.features
 
         if "full" in features:
             features = ["full"]
 
-        if project_has_lto(toml_path, "release") or compile_all:
+        if should_compile_all:
             # print("LTO detected !")
             log.debug(
                 "Target uses LTO or compile_all flag was set, pulling crate's git"
@@ -338,12 +342,19 @@ class CompilationUnit:
             repo_path = self._setup_repo(crate)
             if repo_path is not None:
                 lib_template = self.ctx.template.copy()
-                if lib_template.get("lib", None):
+                if lib_template.get(
+                    "lib", None
+                ):  # Benches, tests and examples often works bad with lib crate modification
                     del lib_template["lib"]
                 log.debug(f"Pulling repo {repo_path}")
                 setup_toml(repo_path.joinpath("Cargo.toml"), lib_template)
-                self._compile_extra(repo_path, crate, features)
+                self._compile_extra(repo_path, crate, [])
                 results += self._get_result_files(repo_path)
+
+        else:
+            log.warning(
+                "Compiling without --full-compilation will give weak signature results !"
+            )
 
         lib_template = self.ctx.template.copy()
         if self.ctx.lib:
@@ -353,13 +364,14 @@ class CompilationUnit:
         results += self._get_result_files(toml_path.parent)
 
         log.info(f"{len(results)} results from compilation of {crate.name}")
+        log.debug(f"{results}")
 
         return results
 
     def compile_remote_crate(
         self,
         crate: Crate,
-        crate_transform: Optional[Callable] = None, # TODO / XXX: unused
+        crate_transform: Optional[Callable] = None,  # TODO / XXX: unused
         compile_all: Optional[bool] = False,
     ) -> List[Path]:
         archive_path: Path = crate.download()

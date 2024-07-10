@@ -20,6 +20,7 @@ def compile_target_subcommand(
     toolchain: ToolchainModel,
     profile: Optional[str] = "release",
     template: Optional[pathlib.Path] = None,
+    compile_all: bool = False,
 ) -> Tuple[List, List]:
     if profile is None:
         profile = "release"
@@ -45,7 +46,9 @@ def compile_target_subcommand(
             args = {"profile": profile}
             if template is not None:
                 args["template"] = template
-            libs += toolchain.compile_crate(crate=dep, ctx=CompilationCtx(**args))
+            libs += toolchain.compile_crate(
+                crate=dep, ctx=CompilationCtx(**args), compile_all=compile_all
+            )
 
         except Exception as exc:
             failed.append(dep.name)
@@ -62,14 +65,17 @@ def sign_subcommand(
     profile: Optional[str] = "release",
     sign_std: bool = True,
     template: Optional[pathlib.Path] = None,
+    compile_all: bool = False,
 ):
-    libs, fails = compile_target_subcommand(target, toolchain, profile, template)
+    libs, fails = compile_target_subcommand(
+        target, toolchain, profile, template, compile_all
+    )
     if sign_std:
         libs += toolchain.get_libs()
 
     if fails:
         print("Failed to compile :")
-        for fail in failed:
+        for fail in fails:
             print(f"\t{fail}")
 
     print(f"Generated : {provider.generate_signature(libs, signature_name)}")

@@ -25,7 +25,7 @@ class ToolchainModel(ABC):
     def compile_crate(
         self,
         crate: Crate,
-        ctx: CompilationCtx = None,
+        ctx: CompilationCtx = CompilationCtx(),
         toml_path: Optional[pathlib.Path] = None,
         compile_all: Optional[bool] = False,
     ):

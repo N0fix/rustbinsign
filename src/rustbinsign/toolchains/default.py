@@ -51,7 +51,7 @@ class DefaultToolchain(ToolchainModel):
         compile_all: Optional[bool] = False,
     ):
         if ctx is None:
-            ctx = CompilationCtx(template=self._default_template, profile=self._profile)
+            ctx = CompilationCtx(profile=self._profile)
 
         unit = CompilationUnit(self, ctx)
         if toml_path:

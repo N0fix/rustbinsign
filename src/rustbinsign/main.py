@@ -6,15 +6,20 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 import toml
 from rich import print
-from rustbininfo import (Crate, TargetRustInfo, get_min_max_update_time,
-                         get_rustc_version)
+from rustbininfo import (
+    Crate,
+    TargetRustInfo,
+    get_min_max_update_time,
+    get_rustc_version,
+)
+
+from rustbinsign.model import CompilationCtx
 
 from .logger import get_log_handler, logger
 from .sig_providers.ida.ida import IDAProvider
 from .sig_providers.ida.model import ConfigIDA
 from .subcommands.download import download_subcommand
-from .subcommands.sign import (compile_target_subcommand, sign_libs,
-                               sign_subcommand)
+from .subcommands.sign import compile_target_subcommand, sign_libs, sign_subcommand
 from .toolchain import ToolchainFactory
 from .util import slugify
 
@@ -37,7 +42,31 @@ example_text = r"""Usage examples:
 def parse_args():
     ## Provider subparsers
     provider = ArgumentParser(add_help=False)
-    provider.add_argument("--provider", type=str, choices=["IDA"], default="IDA", dest="provider", help="Signature provider. This is the tool that will be used to create signatures.")
+    provider.add_argument(
+        "--provider",
+        type=str,
+        choices=["IDA"],
+        default="IDA",
+        dest="provider",
+        help="Signature provider. This is the tool that will be used to create signatures.",
+    )
+
+    signature_name_parser = ArgumentParser(add_help=False)
+    signature_name_parser.add_argument(
+        "--signature-name",
+        default='tmp',
+        type=str,
+        help="Name of the signature to produce",
+    )
+
+    full_compilation = ArgumentParser(add_help=False)
+    full_compilation.add_argument(
+        "-f",
+        "--full-compilation",
+        default=False,
+        action="store_true",
+        help="Tries to compile with tests, benches and examples, to maximize code coverage. Gives the best results, but takes a long time !",
+    )
 
     toolchain_name_parser = ArgumentParser(add_help=False)
     toolchain_name_parser.add_argument(
@@ -100,17 +129,45 @@ def parse_args():
 
     ## Subcommand parsers
     subparsers = parser.add_subparsers(dest="mode", title="mode", help="Mode to use")
+
+    ## INFO
     info_parser = subparsers.add_parser(
         "info", help="Get information about an executable"
     )
+
+    ## DOWNLOAD
     download_parser = subparsers.add_parser(
         "download", help="Download a crate. Exemple: rand_chacha-0.3.1"
     )
+    download_sign_parser = subparsers.add_parser(
+        "download_sign",
+        help="Download a crate and signs it. Exemple: rand_chacha-0.3.1",
+        parents=[provider, signature_name_parser, profile_parser, template_parser, full_compilation],
+    )
+
+    download_compile_parser = subparsers.add_parser(
+        "download_compile",
+        parents=[
+            compile_with_all_parser,
+            profile_parser,
+            template_parser,
+            full_compilation,
+        ],
+        help="Download a crate and compiles it. Exemple: rand_chacha-0.3.1",
+    )
+
+    ## COMPILE
     compile_parser = subparsers.add_parser(
         "compile",
         help="Compiles a crate. Exemple: rand_chacha-0.3.1",
-        parents=[compile_with_all_parser, profile_parser, template_parser],
+        parents=[
+            compile_with_all_parser,
+            profile_parser,
+            template_parser,
+            full_compilation,
+        ],
     )
+
     compile_target_parser = subparsers.add_parser(
         "compile_target",
         help="Compiles all dependencies detected in target compiled rust executable.",
@@ -119,19 +176,11 @@ def parse_args():
             compile_with_all_parser,
             profile_parser,
             template_parser,
+            full_compilation,
         ],
     )
-    download_sign_parser = subparsers.add_parser(
-        "download_sign",
-        help="Download a crate and signs it. Exemple: rand_chacha-0.3.1",
-        parents=[provider, profile_parser, template_parser],
-    )
 
-    download_compile_parser = subparsers.add_parser(
-        "download_compile",
-        parents=[compile_with_all_parser, profile_parser, template_parser],
-        help="Download a crate and compiles it. Exemple: rand_chacha-0.3.1",
-    )
+    ## SIGN
     sign_stdlib_parser = subparsers.add_parser(
         "sign_stdlib",
         help="Sign standard lib toolchain",
@@ -142,21 +191,25 @@ def parse_args():
         help="Generate a signature for a given executable, using choosed signature provider",
         parents=[
             provider,
+            signature_name_parser,
             toolchain_name_parser,
             profile_parser,
             template_parser,
+            full_compilation,
         ],
     )
     signature_lib_parser = subparsers.add_parser(
         "sign_libs",
         help="Generate a signature for a given list of libs, using choosed signature provider",
-        parents=[provider],
+        parents=[provider, signature_name_parser],
     )
     std_parser = subparsers.add_parser(
         "get_std_lib",
         parents=[profile_parser, template_parser],
         help="Download stdlib with symbols for a specific version of rustc",
     )
+
+    ## DETAILS OF SUBCOMMANDS
 
     info_parser.add_argument("target", type=pathlib.Path)
     info_parser.add_argument("-f", "--full", action="store_true", default=False)
@@ -193,7 +246,7 @@ def parse_args():
     )
 
     signature_parser.add_argument("--target", type=pathlib.Path, required=True)
-    signature_parser.add_argument("--signature_name", required=True)
+    
     signature_parser.add_argument(
         "--no-std",
         help="Don't sign std lib",
@@ -277,6 +330,7 @@ def main_cli():
             libs = tc.compile_crate(
                 crate=Crate.from_toml(args.toml_path, fast_load=False),
                 toml_path=pathlib.Path(args.toml_path),
+                compile_all=args.full_compilation,
             )
             [print(lib) for lib in libs]
 
@@ -291,24 +345,29 @@ def main_cli():
                 )
 
             libs, fails = compile_target_subcommand(
-                pathlib.Path(args.target), tc, args.profile, template
+                pathlib.Path(args.target),
+                tc,
+                args.profile,
+                template,
+                compile_all=args.full_compilation,
             )
             [print(lib) for lib in libs]
             [print(f"Failed to compile: {fail}", file=sys.stderr) for fail in fails]
 
         case "download_sign":
-            libs = tc.compile_crate(crate=Crate.from_depstring(args.crate))
-            signature_path = sign_libs(provider, libs, "tmp")
+            libs = tc.compile_crate(crate=Crate.from_depstring(args.crate), compile_all=args.full_compilation)
+            signature_path = sign_libs(provider, libs, args.signature_name)
             print(f"Generated signature : {signature_path}")
 
         case "download_compile":
             libs = tc.compile_crate(
-                crate=Crate.from_depstring(args.crate), compile_all=args.compile_all
+                crate=Crate.from_depstring(args.crate),
+                compile_all=args.full_compilation,
             )
             [print(lib) for lib in libs]
 
         case "sign_libs":
-            signature_path = sign_libs(provider, args.lib, "tmp")
+            signature_path = sign_libs(provider, args.lib, args.signature_name)
             print(f"Generated signature : {signature_path}")
 
         case "sign_target":
@@ -329,6 +388,7 @@ def main_cli():
                 args.profile,
                 not args.no_std,
                 template,
+                compile_all=args.full_compilation,
             )
 
         case "sign_stdlib":
