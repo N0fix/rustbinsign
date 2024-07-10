@@ -28,16 +28,15 @@ DESCRIPTION = """This script aims at facilitate creation of signatures for rust 
 example_text = r"""Usage examples:
 
  rustbinsign -l DEBUG info 'challenge.exe'
- rustbinsign download_sign --provider IDA hyper-0.14.27 1.70.0-x86_64-unknown-linux-gnu
- rustbinsign download hyper-0.14.27
- rustbinsign compile --template ./profile/ctf.json /tmp/rustbininfo/rand_chacha-0.3.1/Cargo.toml 1.70.0-x86_64-unknown-linux-gnu
- rustbinsign download_compile rand_chacha-0.3.1 1.70.0-x86_64-unknown-linux-gnu
- rustbinsign sign_stdlib --template ./profiles/ivanti_rust_sample.json -t 1.70.0-x86_64-unknown-linux-musl --provider IDA
- rustbinsign get_std_lib 1.70.0-x86_64-unknown-linux-musl
- rustbinsign sign_libs -l .\sha2-0.10.8\target\release\sha2.lib -l .\crypt-0.4.2\target\release\crypt.lib --provider IDA
- rustbinsign sign_target -t 1.70.0-x86_64-unknown-linux-musl --provider IDA --target ~/Downloads/target --no-std --signature_name malware_1.70.0_musl
+ rustbinsign -l DEBUG download_sign --provider IDA hyper-0.14.27 1.70.0-x86_64-unknown-linux-gnu
+ rustbinsign -l DEBUG download hyper-0.14.27
+ rustbinsign -l DEBUG download_compile rand_chacha-0.3.1 1.70.0-x86_64-unknown-linux-gnu
+ rustbinsign -l DEBUG compile --template ./profile/ctf.json /tmp/rustbininfo/rand_chacha-0.3.1/Cargo.toml 1.70.0-x86_64-unknown-linux-gnu
+ rustbinsign -l DEBUG sign_stdlib --template ./profiles/ivanti_rust_sample.json -t 1.70.0-x86_64-unknown-linux-musl --provider IDA
+ rustbinsign -l DEBUG get_std_lib 1.70.0-x86_64-unknown-linux-musl
+ rustbinsign -l DEBUG sign_libs -l .\sha2-0.10.8\target\release\sha2.lib -l .\crypt-0.4.2\target\release\crypt.lib --provider IDA
+ rustbinsign -l DEBUG sign_target -t stable-x86_64-pc-windows-gnu --template ./profiles/target.json  --provider IDA --target ./target.exe --no-std --signature_name target_sig
  """
-
 
 def parse_args():
     ## Provider subparsers
