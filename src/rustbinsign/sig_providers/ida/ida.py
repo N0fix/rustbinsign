@@ -107,7 +107,6 @@ class IDAProvider(BaseSigProvider):
             raise SignatureError
 
     def _generate_single_sig(self, pat: pathlib.Path):
-        print(type(pat))
         assert isinstance(pat, pathlib.Path)
         cmdline = [
             f"{str(self.cfg.sigmake)}",

@@ -40,16 +40,16 @@ mode:
                         Mode to use
     info                Get information about an executable
     download            Download a crate. Exemple: rand_chacha-0.3.1
-    download_sign       Download a crate and signs it. Exemple: rand_chacha-0.3.1
     download_compile    Download a crate and compiles it. Exemple: rand_chacha-0.3.1
+    download_sign       Download a crate, compiles it and signs it. Exemple: rand_chacha-0.3.1
     compile             Compiles a crate. Exemple: rand_chacha-0.3.1
     compile_target      Compiles all dependencies detected in target compiled rust executable.
-    sign_stdlib         Sign standard lib toolchain
-    sign_target         Generate a signature for a given executable, using choosed signature provider
-    sign_libs           Generate a signature for a given list of libs, using choosed signature provider
-    get_std_lib         Download stdlib with symbols for a specific version of rustc
+    sign_stdlib         Sign standard lib toolchain.
+    sign_target         Generate a signature for a given executable, using choosed signature provider.
+    sign_libs           Generate a signature for a given list of libs, using choosed signature provider.
+    get_std_lib         Download stdlib with symbols for a specific version of rustc.
     guess_project_creation_timestamp
-                        Tries to guess the compilation date based on dependencies version
+                        Tries to guess the compilation date based on dependencies version.
 
 Usage examples:
 

@@ -2,8 +2,9 @@ import pathlib
 import re
 import tarfile
 import tempfile
+from typing import Optional
 import unicodedata
-
+import shutil
 
 def get_default_dest_dir() -> pathlib.Path:
     destination_directory = pathlib.Path(tempfile.gettempdir()) / __package__
@@ -51,3 +52,9 @@ def slugify(value, allow_unicode=False):
         )
     value = re.sub(r"[^\w\s-]", "", value.lower())
     return re.sub(r"[-\s]+", "-", value).strip("-_")
+
+def get_installed_program_path(program: str) -> Optional[str]:
+    return shutil.which(program)
+
+def is_installed(program: str) -> bool:
+    return get_installed_program_path(program) is not None

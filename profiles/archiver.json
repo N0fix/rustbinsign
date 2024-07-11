@@ -1,0 +1,10 @@
+{
+    "profile": {
+        "release": {
+            "debug": 1,
+            "strip": "none",
+            "opt-level": "z",
+            "panic": "abort"
+        }
+    }
+}

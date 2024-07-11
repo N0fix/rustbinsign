@@ -12,6 +12,11 @@ def rustup_install_toolchain(version, toolchain_name):
         stderr=subprocess.DEVNULL,
     )
     subprocess.run(
+        shlex.split(f"rustup +{version} target add {toolchain_name}"),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    subprocess.run(
         shlex.split(f"rustup install {version}-{toolchain_name} --profile minimal"),
         # check=True,
         stdout=subprocess.DEVNULL,
@@ -23,7 +28,7 @@ def rustup_install_toolchain(version, toolchain_name):
                 f"rustup component add rustc-dev --toolchain {version}-{toolchain_name}"
             ),
             # check=True,
-            timeout=2,
+            timeout=120,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
