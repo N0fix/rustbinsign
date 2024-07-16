@@ -314,9 +314,8 @@ def main_cli():
             ToolchainFactory.from_target_triplet(args.toolchain)
             .set_compilation_profile(args.profile)
             .set_compilation_template(template)
+            .install()
         )
-        if args.mode != "sign_target":
-            tc.install()
 
     match args.mode:
         case "info":

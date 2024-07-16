@@ -5,17 +5,20 @@ from .logger import logger
 
 
 def rustup_install_toolchain(version, toolchain_name):
+    logger.info("Adding target with rustup")
     subprocess.run(
         shlex.split(f"rustup target add {toolchain_name}"),
         check=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
+    logger.info("Adding specific target version with rustup")
     subprocess.run(
         shlex.split(f"rustup +{version} target add {toolchain_name}"),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
+    logger.info("Installing toolchain with rustup")
     subprocess.run(
         shlex.split(f"rustup install {version}-{toolchain_name} --profile minimal"),
         # check=True,

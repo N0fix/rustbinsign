@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "rustbinsign"
-version = "0.1.0"
+version = "0.1.1"
 description = "A tool to help you unstrip rust executables"
 authors = ["Nofix <16479266+N0fix@users.noreply.github.com>"]
 readme = "README.md"
