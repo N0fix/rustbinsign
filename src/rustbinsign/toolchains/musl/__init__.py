@@ -38,9 +38,7 @@ class MuslToolchain(DefaultToolchain):
         return "x86_64-unknown-linux-musl" == toolchain_name
 
     def install(self) -> "self":
-        log.warning(
-            "MUSL toolchain requieres musl, musl-dev and musl-tools packages to be installed."
-        )
+        log.warning("MUSL toolchain requieres musl, musl-dev and musl-tools packages to be installed.")
         log.debug(f"Downloading and installing toolchain version {self.name}")
         rustup_install_toolchain(self.version, self.toolchain_name)
 
@@ -53,7 +51,13 @@ class MuslToolchain(DefaultToolchain):
 
         return self
 
-    def compile_crate(self, crate: Crate, ctx: CompilationCtx = None):
+    def compile_crate(
+        self,
+        crate: Crate,
+        ctx: CompilationCtx = None,
+        toml_path: Optional[pathlib.Path] = None,
+        compile_all: Optional[bool] = False,
+    ):
         assert self.musl_lib_path is not None  # call install() first !
 
         if ctx is None:
@@ -64,13 +68,13 @@ class MuslToolchain(DefaultToolchain):
             "RUSTFLAGS": "-C target-feature=-crt-static",
         }
 
-        return super().compile_crate(crate, ctx)
+        return super().compile_crate(crate, ctx, toml_path, compile_all)
 
     def get_libs(self):
         if self.libs is None:
             # self.libs = self._gen_libs()
             self.libs = []
-            self.libs = self._filter_libs(self.libs, lambda x: not "driver" in x.name)
+            self.libs = self._filter_libs(self.libs, lambda x: "driver" not in x.name)
             self.libs += self._gen_hello_world(self._default_template)
 
         return self.libs
