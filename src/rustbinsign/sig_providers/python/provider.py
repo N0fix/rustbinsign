@@ -1,11 +1,46 @@
+import json
 import pathlib
 
+from beaker.cache import CacheManager
+from beaker.util import parse_cache_config_options
 from datasketch.minhash import MinHash
+from pydantic import BaseModel, Extra
 from smda.common import SmdaFunction
 from smda.Disassembler import Disassembler
 
+from ...logger import logger as log
 from ..provider_base import BaseSigProvider
 from .model import ConfigPython
+
+cache_opts = {"cache.type": "file", "cache.data_dir": "/tmp/cache/data", "cache.lock_dir": "/tmp/cache/lock"}
+
+cache = CacheManager(**parse_cache_config_options(cache_opts))
+
+
+class PythonProviderFunction(BaseModel, extra="allow"):
+    name: str | None
+    code: str
+    offset: int
+
+    def minhash(self) -> MinHash:
+        if getattr(self, "_minhash_value", None) is None:
+            chunks = [self.code[i : i + 2] for i in range(0, len(self.code), 2)]
+            m2 = MinHash()
+            for data in chunks:
+                m2.update(data.encode())
+
+            self._minhash_value = m2
+
+        return self._minhash_value
+
+
+class PythonProviderResult(BaseModel):
+    lib_name: str
+    functions: list[PythonProviderFunction]
+
+
+class Libs(BaseModel):
+    libs: list[PythonProviderResult]
 
 
 class PythonProvider(BaseSigProvider):
@@ -19,29 +54,29 @@ class PythonProvider(BaseSigProvider):
             self.cfg = cfg
 
     def generate_signature(self, libs: list[pathlib.Path], sig_name: str | None) -> pathlib.Path:
-        results = []
+        results: list[PythonProviderResult] = []
         for lib in libs:
-            print(f"Signing {lib}")
+            log.info(f"Signing {lib}")
             r = self._get_lib_functions_hashes(lib)
-            results.append({"name": lib.name, "functions": r})
-            # output_file = pathlib.Path(".") / lib.name
-            # output_file.write_text(json.dumps(json.load()), indent=4)
+            results.append(PythonProviderResult(lib_name=lib.name, functions=r))
 
+        l = Libs(libs=results)
+        output_file = pathlib.Path(sig_name)
+        output_file.write_text(l.model_dump_json(indent=4))
+        # exit(1)
         if self.cfg.target:
-            target = self._get_lib_functions_hashes(self.cfg.target)
-            for fn in target:
-                if fn["offset"] == 0x814D4:
-                    m2 = MinHash()
-                    second_fn = [fn["code"][i : i + 2] for i in range(0, len(fn["code"]), 2)]
-                    for data in second_fn:
-                        m2.update(data.encode())
-                    for _ in results:
-                        for _ff in _["functions"]:
-                            m1 = MinHash()
-                            first_fn = [_ff["code"][i : i + 2] for i in range(0, len(_ff["code"]), 2)]
-                            for data in first_fn:
-                                m1.update(data.encode())
-                            print(m1.jaccard(m2), _["name"], _ff["name"])
+            target: list[PythonProviderFunction] = self._get_lib_functions_hashes(self.cfg.target)
+            from rich.progress import track
+
+            for fn in track(target):
+                m1 = fn.minhash()
+
+                for res in results:
+                    for result_function in res.functions:
+                        if not result_function.name:
+                            continue
+                        if result_function.minhash().jaccard(m1) > 0.9:
+                            print(hex(fn.offset), result_function.name)
 
     def _hash_fn(self, fn: SmdaFunction):
         code = ""
@@ -84,13 +119,14 @@ class PythonProvider(BaseSigProvider):
 
         return code
 
-    def _get_lib_functions_hashes(self, lib: pathlib.Path) -> list:
+    @cache.cache(expire=3600)
+    def _get_lib_functions_hashes(self, lib: pathlib.Path) -> list[PythonProviderFunction]:
         d = Disassembler()
         report = d.disassembleFile(lib)
-        result = []
+        result: list[PythonProviderFunction] = []
         for fn in report.getFunctions():
             code = self._hash_fn(fn)
             if len(code) > 20:
-                result.append({"name": fn.function_name, "code": code, "offset": fn.offset})
+                result.append(PythonProviderFunction(name=fn.function_name, code=code, offset=fn.offset))
 
         return result
