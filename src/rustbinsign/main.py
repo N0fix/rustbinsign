@@ -4,20 +4,13 @@ import pathlib
 import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
-import toml
 from rich import print
-from rustbininfo import (
-    Crate,
-    TargetRustInfo,
-    get_min_max_update_time,
-    get_rustc_version,
-)
-
-from rustbinsign.model import CompilationCtx
+from rustbininfo import Crate, TargetRustInfo, get_min_max_update_time, get_rustc_version
 
 from .logger import get_log_handler, logger
 from .sig_providers.ida.ida import IDAProvider
-from .sig_providers.ida.model import ConfigIDA
+from .sig_providers.python.model import ConfigPython
+from .sig_providers.python.provider import PythonProvider
 from .subcommands.download import download_subcommand
 from .subcommands.sign import compile_target_subcommand, sign_libs, sign_subcommand
 from .toolchain import ToolchainFactory
@@ -38,14 +31,15 @@ example_text = r"""Usage examples:
  rustbinsign -l DEBUG sign_target -t stable-x86_64-pc-windows-gnu --template ./profiles/target.json  --provider IDA --target ./target.exe --no-std --signature_name target_sig
  """
 
+
 def parse_args():
     ## Provider subparsers
     provider = ArgumentParser(add_help=False)
     provider.add_argument(
         "--provider",
         type=str,
-        choices=["IDA"],
-        default="IDA",
+        choices=["IDA", "Python"],
+        default="Python",
         dest="provider",
         help="Signature provider. This is the tool that will be used to create signatures.",
     )
@@ -53,7 +47,7 @@ def parse_args():
     signature_name_parser = ArgumentParser(add_help=False)
     signature_name_parser.add_argument(
         "--signature-name",
-        default='tmp',
+        default="tmp",
         type=str,
         help="Name of the signature to produce",
     )
@@ -130,14 +124,10 @@ def parse_args():
     subparsers = parser.add_subparsers(dest="mode", title="mode", help="Mode to use")
 
     ## INFO
-    info_parser = subparsers.add_parser(
-        "info", help="Get information about an executable"
-    )
+    info_parser = subparsers.add_parser("info", help="Get information about an executable")
 
     ## DOWNLOAD
-    download_parser = subparsers.add_parser(
-        "download", help="Download a crate. Exemple: rand_chacha-0.3.1"
-    )
+    download_parser = subparsers.add_parser("download", help="Download a crate. Exemple: rand_chacha-0.3.1")
     download_sign_parser = subparsers.add_parser(
         "download_sign",
         help="Download a crate and signs it. Exemple: rand_chacha-0.3.1",
@@ -245,7 +235,7 @@ def parse_args():
     )
 
     signature_parser.add_argument("--target", type=pathlib.Path, required=True)
-    
+
     signature_parser.add_argument(
         "--no-std",
         help="Don't sign std lib",
@@ -254,9 +244,7 @@ def parse_args():
         default=False,
     )
 
-    signature_lib_parser.add_argument(
-        "--lib", "-l", action="append", type=pathlib.Path, required=True
-    )
+    signature_lib_parser.add_argument("--lib", "-l", action="append", type=pathlib.Path, required=True)
 
     std_parser.add_argument("toolchain", help="Specific toolchain. Use target triple.")
 
@@ -288,7 +276,8 @@ def main_cli():
             provider = IDAProvider()
 
         else:
-            NotImplementedError(f"Provider {args.provider} do not exists")
+            provider = PythonProvider(ConfigPython(target=args.target))
+            # NotImplementedError(f"Provider {args.provider} do not exists")
 
     if args.mode in (
         "compile",
