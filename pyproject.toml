@@ -9,6 +9,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "annotated-types>=0.6.0",
+    "beaker>=1.13.0",
     "certifi>=2023.11.17",
     "charset-normalizer>=3.3.2",
     "datasketch>=1.6.5",
@@ -26,7 +27,7 @@ dependencies = [
     "rich>=13.7.0",
     "rustbininfo>=0.5.5",
     "semver>=3.0.2",
-    "smda>=1.14.0",
+    "smda==1.14.1",
     "smmap>=5.0.1",
     "toml>=0.10.2",
     "typing-extensions>=4.9.0",
