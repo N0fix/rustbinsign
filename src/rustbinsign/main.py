@@ -47,7 +47,7 @@ def parse_args():
     signature_name_parser = ArgumentParser(add_help=False)
     signature_name_parser.add_argument(
         "--signature-name",
-        default="tmp",
+        default="signature_output",
         type=str,
         help="Name of the signature to produce",
     )

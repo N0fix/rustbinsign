@@ -9,7 +9,6 @@ from typing import Callable, Dict, List, Optional, Text
 import requests
 import toml
 from git import Repo, TagReference
-from rich import print
 from rustbininfo import Crate
 
 from .logger import logger as log
@@ -31,9 +30,7 @@ fn panic(_info: &PanicInfo) -> ! {
     for dirpath, dirnames, filenames in os.walk(project_path):
         for filename in [f for f in filenames if f.endswith(".rs")]:
             if filename == "lib.rs":
-                open(os.path.join(dirpath, filename), "a", encoding="utf-8").write(
-                    NO_PANIC_CODE
-                )
+                open(os.path.join(dirpath, filename), "a", encoding="utf-8").write(NO_PANIC_CODE)
 
 
 def remove_line(filepath: Path, line_nb: int):
@@ -79,9 +76,7 @@ def setup_toml(toml_path: Path, template: Dict):
 def project_has_lto(toml_path: Path, profile: str):
     crate_toml = toml.load(toml_path)
     if crate_toml.get("profile", None) and crate_toml["profile"].get(profile, None):
-        return crate_toml["profile"][profile].get(
-            "lto", False
-        )  # Terrible, should also match with lto = none etc
+        return crate_toml["profile"][profile].get("lto", False)  # Terrible, should also match with lto = none etc
 
     return False
 
@@ -118,9 +113,7 @@ class CompilationUnit:
                 return None
 
         else:
-            log.info(
-                f"{repo_path} exists, assuming that his directory is the cloned repo"
-            )
+            log.info(f"{repo_path} exists, assuming that his directory is the cloned repo")
             repo = Repo(repo_path)
 
         # Nothing standard, but most repos should have something like this
@@ -154,9 +147,6 @@ class CompilationUnit:
         additional_env: Optional[Dict] = None,
     ):
         args = [
-            # "rustup",
-            # "run",
-            # self.tc.name,
             "cargo",
             f"+{self.tc.version}",
             "build",
@@ -165,24 +155,20 @@ class CompilationUnit:
         ]
 
         args += list(post_verb)
-        log.info(args)
+        log.debug(args)
 
         if features:
             args.append("--features")
-            args.append(
-                ",".join(
-                    list(filter(lambda f: f not in ["nightly", "default"], features))
-                )
-            )
+            args.append(",".join(list(filter(lambda f: f not in ["nightly", "default"], features))))
 
         env = os.environ.copy()
         if env is not None:
             # Custom environ setup
             if additional_env:
-                for key, val in self.ctx.env.items():
+                for key, val in additional_env.items():
                     env[key] = val
 
-        log.debug(f'{" ".join(args)} || With env : {self.ctx.env}')
+        log.debug(f"{' '.join(args)} || With env : {additional_env} || cwd {project_path}")
 
         ret = subprocess.run(
             args,
@@ -193,21 +179,21 @@ class CompilationUnit:
         )
 
         if ret.returncode == 0:
+            log.debug("Compilation success")
             return ret.returncode, ret.stdout, ret.stderr
 
+        log.debug("Compilation error: %s", ret.stderr.decode())
         if features:  # Remaining features to test compilation with
             # Removing one feature and try to compile again
             log.debug(f"Compilation failed, retrying with features : {features[1:]}")
-            return self._cargo_build(
-                project_path, crate, features[1:], post_verb, additional_env
-            )
+            return self._cargo_build(project_path, crate, features[1:], post_verb, additional_env)
 
         return ret.returncode, ret.stdout, ret.stderr
 
-    def _compile_extra(
-        self, repo_path: Path, crate: Crate, features: Optional[List[Text]] = ()
-    ) -> Path:
+    def _compile_extra(self, repo_path: Path, crate: Crate, features: Optional[List[Text]] = ()) -> Path:
         log.info("Compiling tests, it might take minutes")
+        env = self.ctx.env.copy()
+        self.tc._before_compile_extra(self, env, repo_path, crate, features)
 
         # I guess output path could be customisable, so this is not guaranteed to work.
         code, out, err = self._cargo_build(
@@ -219,7 +205,7 @@ class CompilationUnit:
                 "--profile",
                 "release" if self.ctx.profile == "release" else "dev",
             ],
-            additional_env=self.ctx.env,
+            additional_env=env,
         )
         code, out, err = self._cargo_build(
             repo_path,
@@ -230,7 +216,7 @@ class CompilationUnit:
                 "--profile",
                 "release" if self.ctx.profile == "release" else "dev",
             ],
-            additional_env=self.ctx.env,
+            additional_env=env,
         )
         code, out, err = self._cargo_build(
             repo_path,
@@ -241,14 +227,12 @@ class CompilationUnit:
                 "--profile",
                 "release" if self.ctx.profile == "release" else "dev",
             ],
-            additional_env=self.ctx.env,
+            additional_env=env,
         )
 
         return repo_path
 
-    def _compile_lib(
-        self, project_path: Path, crate: Crate, features: Optional[List[Text]] = ()
-    ):
+    def _compile_lib(self, project_path: Path, crate: Crate, features: Optional[List[Text]] = ()):
         code, out, err = self._cargo_build(
             project_path,
             crate,
@@ -261,9 +245,7 @@ class CompilationUnit:
             additional_env=self.ctx.env,
         )
 
-    def _get_result_files(
-        self, project_path: Path, profile: Optional[str] = None
-    ) -> List[Path]:
+    def _get_result_files(self, project_path: Path, profile: Optional[str] = None) -> List[Path]:
         """Get generated target files from a project.
 
         Args:
@@ -274,11 +256,7 @@ class CompilationUnit:
             List[Path]: List of targets generated by the project
         """
         compile_dst = project_path.joinpath("target")
-        compile_dst = list(
-            glob.glob(
-                f"{compile_dst.absolute()}/{self.tc.toolchain_name}/*{self.ctx.profile}*"
-            )
-        )[0]
+        compile_dst = list(glob.glob(f"{compile_dst.absolute()}/{self.tc.toolchain_name}/*{self.ctx.profile}*"))[0]
 
         if profile is not None:
             compile_dst = compile_dst.joinpath(profile)
@@ -297,9 +275,7 @@ class CompilationUnit:
             ]
 
         for root, directories, filenames in os.walk(compile_dst):
-            directories[:] = [
-                d for d in directories if d not in (".fingerprint", "build")
-            ]
+            directories[:] = [d for d in directories if d not in (".fingerprint", "build")]
             for filename in filenames:
                 for routine in seeked_files:
                     if routine(filename):
@@ -322,7 +298,7 @@ class CompilationUnit:
         self,
         crate: Crate,
         toml_path: Path,
-        compile_all: bool = False
+        compile_all: bool = False,
         # lib: bool = True,
         # crate_transform: Optional[Callable] = None,
     ) -> List[pathlib.Path]:
@@ -336,9 +312,7 @@ class CompilationUnit:
 
         if should_compile_all:
             # print("LTO detected !")
-            log.debug(
-                "Target uses LTO or compile_all flag was set, pulling crate's git"
-            )
+            log.debug("Target uses LTO or compile_all flag was set, pulling crate's git")
             repo_path = self._setup_repo(crate)
             if repo_path is not None:
                 lib_template = self.ctx.template.copy()
@@ -352,9 +326,7 @@ class CompilationUnit:
                 results += self._get_result_files(repo_path)
 
         else:
-            log.warning(
-                "Compiling without --full-compilation will give weak signature results !"
-            )
+            log.warning("Compiling without --full-compilation will give weak signature results !")
 
         lib_template = self.ctx.template.copy()
         if self.ctx.lib:

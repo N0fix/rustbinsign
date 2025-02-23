@@ -20,8 +20,11 @@ class MinGWToolchain(DefaultToolchain):
         return "x86_64-pc-windows-gnu" == toolchain_name
 
     def install(self) -> "self":
-        if not is_installed('x86_64-w64-mingw32-gcc'):
-            print("MinGW toolchain requieres `x86_64-w64-mingw32-gcc'. This program could not be found, please install MinGW.", file=sys.stderr)
+        if not is_installed("x86_64-w64-mingw32-gcc"):
+            print(
+                "MinGW toolchain requieres `x86_64-w64-mingw32-gcc'. This program could not be found, please install MinGW.",
+                file=sys.stderr,
+            )
             exit(1)
 
         return super().install()
@@ -30,7 +33,7 @@ class MinGWToolchain(DefaultToolchain):
         if self.libs is None:
             # self.libs = self._gen_libs()
             self.libs = []
-            self.libs = self._filter_libs(self.libs, lambda x: not "driver" in x.name)
+            self.libs = self._filter_libs(self.libs, lambda x: "driver" not in x.name)
             self.libs += self._gen_hello_world(self._default_template)
 
         return self.libs

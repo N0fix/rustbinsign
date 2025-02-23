@@ -12,6 +12,7 @@ dependencies = [
     "beaker>=1.13.0",
     "certifi>=2023.11.17",
     "charset-normalizer>=3.3.2",
+    "construct==2.10.70",
     "datasketch>=1.6.5",
     "gitdb>=4.0.11",
     "gitpython>=3.1.41",
@@ -20,6 +21,7 @@ dependencies = [
     "mdurl>=0.1.2",
     "packaging>=23.2",
     "parse>=1.20.0",
+    "pdbparse>=1.2",
     "pydantic>=2.5.2",
     "pydantic-core>=2.14.5",
     "pygments>=2.17.2",
@@ -43,7 +45,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
-dev = ["ruff>=0.9.7"]
+dev = [
+    "ipython>=8.32.0",
+    "ruff>=0.9.7",
+]
 
 [tool.ruff]
 line-length = 120

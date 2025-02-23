@@ -16,11 +16,9 @@ class ToolchainModel(ABC):
     version: str
 
     @classmethod
-    def match_toolchain(cls, toolchain_name: str):
-        ...
+    def match_toolchain(cls, toolchain_name: str): ...
 
-    def install(self) -> "self":
-        ...
+    def install(self) -> "self": ...
 
     def compile_crate(
         self,
@@ -28,14 +26,16 @@ class ToolchainModel(ABC):
         ctx: CompilationCtx = CompilationCtx(),
         toml_path: Optional[pathlib.Path] = None,
         compile_all: Optional[bool] = False,
-    ):
-        ...
+    ): ...
 
-    def get_libs(self):
-        ...
+    def get_libs(self): ...
 
-    def set_default_compilation_template(self, template: Dict):
-        ...
+    def set_default_compilation_template(self, template: Dict): ...
+
+    # Callback before compiling extras (tests, benches, examples)
+    def _before_compile_extra(
+        self, compilation_unit, env: dict, repo_path: pathlib.Path, crate: Crate, features: list[str] | None
+    ): ...
 
     @property
     def name(self):
