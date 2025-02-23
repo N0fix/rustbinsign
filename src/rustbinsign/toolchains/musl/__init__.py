@@ -65,10 +65,16 @@ class MuslToolchain(DefaultToolchain):
 
         ctx.env |= {
             "LD_LIBRARY_PATH": str(self.musl_lib_path),
-            "RUSTFLAGS": "-C target-feature=-crt-static",
+            # "RUSTFLAGS": "-C target-feature=-crt-static",
         }
 
         return super().compile_crate(crate, ctx, toml_path, compile_all)
+
+    def _before_compile_extra(
+        self, compilation_unit, env: dict, repo_path: pathlib.Path, crate: Crate, features: list[str] | None
+    ):
+        if env.get("RUSTFLAGS", None) is not None:
+            del env["RUSTFLAGS"]
 
     def get_libs(self):
         if self.libs is None:

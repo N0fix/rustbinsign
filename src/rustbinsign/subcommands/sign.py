@@ -9,9 +9,7 @@ from ..sig_providers.provider_base import BaseSigProvider
 from ..toolchains.model import ToolchainModel
 
 
-def sign_libs(
-    provider: BaseSigProvider, libs: List[pathlib.Path], signature_name: str
-) -> pathlib.Path:
+def sign_libs(provider: BaseSigProvider, libs: List[pathlib.Path], signature_name: str) -> pathlib.Path:
     return provider.generate_signature(libs, signature_name)
 
 
@@ -46,9 +44,7 @@ def compile_target_subcommand(
             args = {"profile": profile}
             if template is not None:
                 args["template"] = template
-            libs += toolchain.compile_crate(
-                crate=dep, ctx=CompilationCtx(**args), compile_all=compile_all
-            )
+            libs += toolchain.compile_crate(crate=dep, ctx=CompilationCtx(**args), compile_all=compile_all)
 
         except Exception as exc:
             failed.append(dep.name)
@@ -67,9 +63,7 @@ def sign_subcommand(
     template: Optional[pathlib.Path] = None,
     compile_all: bool = False,
 ):
-    libs, fails = compile_target_subcommand(
-        target, toolchain, profile, template, compile_all
-    )
+    libs, fails = compile_target_subcommand(target, toolchain, profile, template, compile_all)
     if sign_std:
         libs += toolchain.get_libs()
 
