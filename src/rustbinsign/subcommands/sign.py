@@ -46,9 +46,7 @@ def compile_target_subcommand(
             args = {"profile": profile}
             if template is not None:
                 args["template"] = template
-            libs += toolchain.compile_crate(
-                crate=dep, ctx=CompilationCtx(**args), compile_all=compile_all
-            )
+            libs += toolchain.compile_remote_crate(crate=dep, ctx=CompilationCtx(**args), compile_all=compile_all)
 
         except Exception as exc:
             failed.append(dep.name)

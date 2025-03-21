@@ -43,31 +43,36 @@ class DefaultToolchain(ToolchainModel):
         rustup_install_toolchain(self.version, self.toolchain_name)
         return self
 
-    def compile_crate(
-        self,
-        crate: Crate,
-        ctx: Optional[CompilationCtx] = None,
-        toml_path: Optional[pathlib.Path] = None,
-        compile_all: Optional[bool] = False,
-    ):
+    def _get_compilation_unit(self, ctx: Optional[CompilationCtx] = None) -> CompilationUnit:
         if ctx is None:
             ctx = CompilationCtx(profile=self._profile)
 
-        unit = CompilationUnit(self, ctx)
-        if toml_path:
-            return unit.compile_crate(crate, toml_path, compile_all)
+        return CompilationUnit(self, ctx)
 
+    def compile_remote_crate(self, crate: Crate, ctx: Optional[CompilationCtx] = None, compile_all: bool = False):
+        unit = self._get_compilation_unit(ctx)
         return unit.compile_remote_crate(
             crate,
             crate_transform=self.crate_transforms.get(crate.name),
             compile_all=compile_all,
         )
 
+    def compile_project(
+        self,
+        toml_path: pathlib.Path,
+        ctx: CompilationCtx | None = None,
+        features: list[str] = (),
+        verb: str | None = "build",
+        additional_args: list[str] = (),
+    ):
+        unit = self._get_compilation_unit(ctx)
+        return unit.compile_local_project(toml_path, features=features, verb=verb, additional_args=additional_args)
+
     def get_libs(self):
         if self.libs is None:
             self.libs = self._gen_libs()
 
-        self.libs = self._filter_libs(self.libs, lambda x: not "driver" in x.name)
+        self.libs = self._filter_libs(self.libs, lambda x: "driver" not in x.name)
         return self.libs
 
     def set_compilation_template(self, template: Optional[Dict]):

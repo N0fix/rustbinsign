@@ -9,7 +9,6 @@ from typing import Callable, Dict, List, Optional, Text
 import requests
 import toml
 from git import Repo, TagReference
-from rich import print
 from rustbininfo import Crate
 
 from .logger import logger as log
@@ -31,9 +30,7 @@ fn panic(_info: &PanicInfo) -> ! {
     for dirpath, dirnames, filenames in os.walk(project_path):
         for filename in [f for f in filenames if f.endswith(".rs")]:
             if filename == "lib.rs":
-                open(os.path.join(dirpath, filename), "a", encoding="utf-8").write(
-                    NO_PANIC_CODE
-                )
+                open(os.path.join(dirpath, filename), "a", encoding="utf-8").write(NO_PANIC_CODE)
 
 
 def remove_line(filepath: Path, line_nb: int):
@@ -79,9 +76,7 @@ def setup_toml(toml_path: Path, template: Dict):
 def project_has_lto(toml_path: Path, profile: str):
     crate_toml = toml.load(toml_path)
     if crate_toml.get("profile", None) and crate_toml["profile"].get(profile, None):
-        return crate_toml["profile"][profile].get(
-            "lto", False
-        )  # Terrible, should also match with lto = none etc
+        return crate_toml["profile"][profile].get("lto", False)  # Terrible, should also match with lto = none etc
 
     return False
 
@@ -118,9 +113,7 @@ class CompilationUnit:
                 return None
 
         else:
-            log.info(
-                f"{repo_path} exists, assuming that his directory is the cloned repo"
-            )
+            log.info(f"{repo_path} exists, assuming that his directory is the cloned repo")
             repo = Repo(repo_path)
 
         # Nothing standard, but most repos should have something like this
@@ -148,24 +141,22 @@ class CompilationUnit:
     def _cargo_build(
         self,
         project_path: pathlib.Path,
-        crate: Crate,
         features: Optional[List[Text]] = (),
-        post_verb: Optional[List[Text]] = (),
+        additional_args: Optional[List[Text]] = (),
         additional_env: Optional[Dict] = None,
+        verb: str | None = "build",
+        stderr_to_stdout: bool = False,
     ):
         args = [
-            # "rustup",
-            # "run",
-            # self.tc.name,
             "cargo",
             f"+{self.tc.version}",
-            "build",
+            verb,
             "--target",
             self.tc.toolchain_name,
         ]
 
-        args += list(post_verb)
-        log.info(args)
+        args += list(additional_args)
+        log.debug(args)
 
         if features:
             args.append("--features")
@@ -179,15 +170,15 @@ class CompilationUnit:
         if env is not None:
             # Custom environ setup
             if additional_env:
-                for key, val in self.ctx.env.items():
+                for key, val in additional_env.items():
                     env[key] = val
 
-        log.debug(f'{" ".join(args)} || With env : {self.ctx.env}')
+        log.debug(f"{' '.join(args)} || With env : {additional_env}")
 
         ret = subprocess.run(
             args,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT if stderr_to_stdout else subprocess.PIPE,
             cwd=project_path,
             env=env,
         )
@@ -198,9 +189,7 @@ class CompilationUnit:
         if features:  # Remaining features to test compilation with
             # Removing one feature and try to compile again
             log.debug(f"Compilation failed, retrying with features : {features[1:]}")
-            return self._cargo_build(
-                project_path, crate, features[1:], post_verb, additional_env
-            )
+            return self._cargo_build(project_path, features[1:], additional_args, additional_env, verb)
 
         return ret.returncode, ret.stdout, ret.stderr
 
@@ -208,58 +197,64 @@ class CompilationUnit:
         self, repo_path: Path, crate: Crate, features: Optional[List[Text]] = ()
     ) -> Path:
         log.info("Compiling tests, it might take minutes")
+        env = self.ctx.env.copy()
 
         # I guess output path could be customisable, so this is not guaranteed to work.
         code, out, err = self._cargo_build(
             repo_path,
-            crate,
             features,
             [
                 "--tests",
                 "--profile",
                 "release" if self.ctx.profile == "release" else "dev",
             ],
-            additional_env=self.ctx.env,
+            additional_env=env,
         )
         code, out, err = self._cargo_build(
             repo_path,
-            crate,
             features,
             [
                 "--benches",
                 "--profile",
                 "release" if self.ctx.profile == "release" else "dev",
             ],
-            additional_env=self.ctx.env,
+            additional_env=env,
         )
         code, out, err = self._cargo_build(
             repo_path,
-            crate,
             features,
             [
                 "--examples",
                 "--profile",
                 "release" if self.ctx.profile == "release" else "dev",
             ],
-            additional_env=self.ctx.env,
+            additional_env=env,
         )
 
         return repo_path
 
-    def _compile_lib(
-        self, project_path: Path, crate: Crate, features: Optional[List[Text]] = ()
+    def compile_project(
+        self,
+        project_path: Path,
+        features: Optional[List[Text]] = (),
+        verb: str | None = "build",
+        additional_args: list[str] = [],
+        stderr_to_stdout: bool = False,
     ):
         code, out, err = self._cargo_build(
             project_path,
-            crate,
             features,
             [
-                # "--lib",
                 "--profile",
                 "release" if self.ctx.profile == "release" else "dev",
-            ],
+            ]
+            + additional_args,
             additional_env=self.ctx.env,
+            verb=verb,
+            stderr_to_stdout=stderr_to_stdout,
         )
+
+        return code, out, err
 
     def _get_result_files(
         self, project_path: Path, profile: Optional[str] = None
@@ -274,6 +269,7 @@ class CompilationUnit:
             List[Path]: List of targets generated by the project
         """
         compile_dst = project_path.joinpath("target")
+        print(f"{compile_dst.absolute()}/{self.tc.toolchain_name}/*{self.ctx.profile}*")
         compile_dst = list(
             glob.glob(
                 f"{compile_dst.absolute()}/{self.tc.toolchain_name}/*{self.ctx.profile}*"
@@ -360,13 +356,22 @@ class CompilationUnit:
         if self.ctx.lib:
             lib_template["lib"] = {"crate-type": ["dylib"]}
         setup_toml(toml_path, lib_template)
-        self._compile_lib(toml_path.parent, crate, features)
-        results += self._get_result_files(toml_path.parent)
+        results += self.compile_local_project(toml_path.parent, features)
 
         log.info(f"{len(results)} results from compilation of {crate.name}")
         log.debug(f"{results}")
 
         return results
+
+    def compile_local_project(
+        self,
+        toml_path: pathlib.Path,
+        features: list[str] = (),
+        verb: str | None = "build",
+        additional_args: list[str] = (),
+    ):
+        self.compile_project(toml_path.parent, features, verb=verb, additional_args=additional_args)
+        return self._get_result_files(toml_path.parent)
 
     def compile_remote_crate(
         self,

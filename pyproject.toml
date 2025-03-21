@@ -1,31 +1,52 @@
-[tool.poetry]
+[project]
 name = "rustbinsign"
 version = "0.1.1"
 description = "A tool to help you unstrip rust executables"
-authors = ["Nofix <16479266+N0fix@users.noreply.github.com>"]
+authors = [
+    { name = "Nofix", email = "16479266+N0fix@users.noreply.github.com" },
+]
 readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "annotated-types>=0.6.0",
+    "beaker>=1.13.0",
+    "certifi>=2023.11.17",
+    "charset-normalizer>=3.3.2",
+    "construct==2.10.70",
+    "datasketch>=1.6.5",
+    "gitdb>=4.0.11",
+    "gitpython>=3.1.41",
+    "idna>=3.6",
+    "markdown-it-py>=3.0.0",
+    "mdurl>=0.1.2",
+    "packaging>=23.2",
+    "parse>=1.20.0",
+    "pydantic>=2.5.2",
+    "pydantic-core>=2.14.5",
+    "pygments>=2.17.2",
+    "requests>=2.31.0",
+    "rich>=13.7.0",
+    "rustbininfo>=0.5.5",
+    "semver>=3.0.2",
+    "smmap>=5.0.1",
+    "toml>=0.10.2",
+    "typing-extensions>=4.9.0",
+    "urllib3>=2.1.0",
+]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-requests = "^2.31.0"
-pydantic = "^2.5.2"
-packaging = "^23.2"
-toml = "^0.10.2"
-semver = "^3.0.2"
-parse = "^1.20.0"
-rich = "^13.7.0"
-gitpython = "^3.1.41"
-rustbininfo = "^0.4.1"
-
-
-[tool.poetry.group.dev.dependencies]
-black = "^23.12.0"
-isort = "^5.13.2"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.poetry.scripts]
+[project.scripts]
 rustbinsign = "rustbinsign.main:main_cli"
 rbs = "rustbinsign.main:main_cli"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "ipython>=8.32.0",
+    "ruff>=0.9.7",
+]
+
+[tool.ruff]
+line-length = 120

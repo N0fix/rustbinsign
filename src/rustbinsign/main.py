@@ -4,20 +4,11 @@ import pathlib
 import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
-import toml
 from rich import print
-from rustbininfo import (
-    Crate,
-    TargetRustInfo,
-    get_min_max_update_time,
-    get_rustc_version,
-)
-
-from rustbinsign.model import CompilationCtx
+from rustbininfo import Crate, TargetRustInfo, get_min_max_update_time, get_rustc_version
 
 from .logger import get_log_handler, logger
 from .sig_providers.ida.ida import IDAProvider
-from .sig_providers.ida.model import ConfigIDA
 from .subcommands.download import download_subcommand
 from .subcommands.sign import compile_target_subcommand, sign_libs, sign_subcommand
 from .toolchain import ToolchainFactory
@@ -53,7 +44,7 @@ def parse_args():
     signature_name_parser = ArgumentParser(add_help=False)
     signature_name_parser.add_argument(
         "--signature-name",
-        default='tmp',
+        default="signature_output",
         type=str,
         help="Name of the signature to produce",
     )
@@ -325,7 +316,7 @@ def main_cli():
             download_subcommand(args.crate, args.directory)
 
         case "compile":
-            libs = tc.compile_crate(
+            libs = tc.compile_remote_crate(
                 crate=Crate.from_toml(args.toml_path, fast_load=False),
                 toml_path=pathlib.Path(args.toml_path),
                 compile_all=args.full_compilation,
@@ -353,12 +344,12 @@ def main_cli():
             [print(f"Failed to compile: {fail}", file=sys.stderr) for fail in fails]
 
         case "download_sign":
-            libs = tc.compile_crate(crate=Crate.from_depstring(args.crate), compile_all=args.full_compilation)
+            libs = tc.compile_remote_crate(crate=Crate.from_depstring(args.crate), compile_all=args.full_compilation)
             signature_path = sign_libs(provider, libs, args.signature_name)
             print(f"Generated signature : {signature_path}")
 
         case "download_compile":
-            libs = tc.compile_crate(
+            libs = tc.compile_remote_crate(
                 crate=Crate.from_depstring(args.crate),
                 compile_all=args.full_compilation,
             )
