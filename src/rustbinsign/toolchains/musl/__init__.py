@@ -53,7 +53,7 @@ class MuslToolchain(DefaultToolchain):
 
         return self
 
-    def compile_crate(self, crate: Crate, ctx: CompilationCtx = None):
+    def _compile_setup_ctx(self, ctx) -> CompilationCtx:
         assert self.musl_lib_path is not None  # call install() first !
 
         if ctx is None:
@@ -61,16 +61,35 @@ class MuslToolchain(DefaultToolchain):
 
         ctx.env |= {
             "LD_LIBRARY_PATH": str(self.musl_lib_path),
-            "RUSTFLAGS": "-C target-feature=-crt-static",
         }
+        if ctx.lib:
+            # warning: -crt-static only works when building lib
+            ctx.env |= {
+                "RUSTFLAGS": ctx.env.get("RUSTFLAGS", "") + " -C target-feature=-crt-static",
+            }
 
-        return super().compile_crate(crate, ctx)
+        return ctx
+
+    def compile_remote_crate(self, crate: Crate, ctx: Optional[CompilationCtx] = None, compile_all: bool = False):
+        ctx = self._compile_setup_ctx(ctx)
+        return super().compile_remote_crate(crate, ctx, compile_all)
+
+    def compile_project(
+        self,
+        toml_path: pathlib.Path,
+        ctx: CompilationCtx | None = None,
+        features: Optional[list[str]] = (),
+        verb: str | None = "build",
+        additional_args: list[str] = [],
+    ):
+        ctx = self._compile_setup_ctx(ctx)
+        return super().compile_project(toml_path, features=features, verb=verb, additional_args=additional_args)
 
     def get_libs(self):
         if self.libs is None:
             # self.libs = self._gen_libs()
             self.libs = []
-            self.libs = self._filter_libs(self.libs, lambda x: not "driver" in x.name)
+            self.libs = self._filter_libs(self.libs, lambda x: "driver" not in x.name)
             self.libs += self._gen_hello_world(self._default_template)
 
         return self.libs
@@ -109,7 +128,7 @@ class MuslToolchain(DefaultToolchain):
             "lib": False,
             "env": {
                 "LD_LIBRARY_PATH": str(self.musl_lib_path),
-                # "RUSTFLAGS": "-C target-feature=-crt-static",
+                # "RUSTFLAGS": ctx.env.get("RUSTFLAGS", "") + " -C target-feature=-crt-static",
             },
             "template": template,
         }

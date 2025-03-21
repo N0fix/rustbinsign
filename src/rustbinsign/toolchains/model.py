@@ -2,8 +2,6 @@ import pathlib
 from abc import ABC
 from typing import Dict, List, Optional
 
-from rustbininfo import Crate
-
 from ..compilation import CompilationUnit
 from ..model import CompilationCtx
 
@@ -22,12 +20,15 @@ class ToolchainModel(ABC):
     def install(self) -> "self":
         ...
 
-    def compile_crate(
+    def compile_remote_crate(self, crate, ctx: Optional[CompilationCtx] = None, compile_all: bool = False): ...
+
+    def compile_project(
         self,
-        crate: Crate,
-        ctx: CompilationCtx = CompilationCtx(),
-        toml_path: Optional[pathlib.Path] = None,
-        compile_all: Optional[bool] = False,
+        toml_path: pathlib.Path,
+        ctx: CompilationCtx | None = None,
+        features: list[str] = (),
+        verb: str | None = "build",
+        additional_args: list[str] = (),
     ):
         ...
 
