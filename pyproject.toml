@@ -1,6 +1,6 @@
 [project]
 name = "rustbinsign"
-version = "0.1.1"
+version = "0.1.2"
 description = "A tool to help you unstrip rust executables"
 authors = [
     { name = "Nofix", email = "16479266+N0fix@users.noreply.github.com" },
