@@ -5,8 +5,8 @@ import subprocess
 import sys
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Optional
 from multiprocessing.pool import ThreadPool
+from typing import List, Optional
 
 from parse import *
 
@@ -142,10 +142,12 @@ class IDAProvider(BaseSigProvider):
     def _generate_pattern(self, libfile) -> pathlib.Path:
         assert libfile.exists()
         log.debug(f"Gen for {libfile}...")
+        # script_path = pathlib.Path(__file__).parent.resolve().joinpath("sig_gen.py")
         script_path = pathlib.Path(__file__).parent.resolve().joinpath("idb2pat.py")
         target_path = (
             pathlib.Path(os.getcwd()).joinpath(libfile.name).with_suffix(".pat")
         )
+        # target_path = pathlib.Path(libfile).with_suffix(".pat")
 
         if target_path.exists():  # Don't resign if signed already
             return target_path
