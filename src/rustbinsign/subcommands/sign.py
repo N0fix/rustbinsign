@@ -1,6 +1,7 @@
 import pathlib
 from typing import List, Optional, Tuple
 
+from rich import print
 from rustbininfo import Crate, TargetRustInfo
 
 from ..logger import logger as log
@@ -31,7 +32,7 @@ def compile_target_subcommand(
 
     log.info("Getting dependencies...")
 
-    dependencies: List[Crate] = TargetRustInfo.from_target(target).dependencies
+    dependencies: List[Crate] = TargetRustInfo.from_target(target, fast_load=False).dependencies
     # _, version = get_rustc_version(target)
     # tc = toolchain.install()
     failed = []
@@ -51,6 +52,8 @@ def compile_target_subcommand(
         except Exception as exc:
             failed.append(dep.name)
             log.error(exc)
+            print(exc)
+            raise exc
 
     return libs, failed
 
@@ -70,6 +73,9 @@ def sign_subcommand(
     )
     if sign_std:
         libs += toolchain.get_libs()
+
+    print('Compiled:')
+    print(libs)
 
     if fails:
         print("Failed to compile :")

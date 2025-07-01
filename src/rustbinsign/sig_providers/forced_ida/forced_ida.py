@@ -1,6 +1,7 @@
 import os
 import pathlib
 import subprocess
+import sys
 import tempfile
 
 from ...logger import logger as log
@@ -8,6 +9,14 @@ from ..ida.ida import IDAProvider
 
 
 class ForcedIDAProvider(IDAProvider):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        import shutil
+        ida_makesig_plugin_path = pathlib.Path(shutil.which("idat64")).parent / "plugins" / "makesig64_patched.so"
+        if not ida_makesig_plugin_path.exists():
+            print("Please patch the ida makesig plugin before using forcedIDA provider.", file=sys.stderr)
+            exit(1)
+
     def _generate_pattern(self, libfile) -> pathlib.Path:
         assert libfile.exists()
         log.debug(f"Gen for {libfile}...")

@@ -270,7 +270,11 @@ class CompilationUnit:
             glob.glob(
                 f"{compile_dst.absolute()}/{self.tc.toolchain_name}/*{self.ctx.profile}*"
             )
-        )[0]
+        )
+        if not compile_dst:
+            return []
+
+        compile_dst = compile_dst[0]
 
         if profile is not None:
             compile_dst = compile_dst.joinpath(profile)
