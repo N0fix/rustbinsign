@@ -71,6 +71,8 @@ class MuslToolchain(DefaultToolchain):
         return ctx
 
     def compile_remote_crate(self, crate: Crate, ctx: Optional[CompilationCtx] = None, compile_all: bool = False):
+        if compile_all:
+            ctx.lib = False
         ctx = self._compile_setup_ctx(ctx)
         return super().compile_remote_crate(crate, ctx, compile_all)
 

@@ -5,12 +5,15 @@ import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 from rich import print
-from rustbininfo import Crate, TargetRustInfo, get_min_max_update_time, get_rustc_version
+from rustbininfo import (BasicProvider, Crate, TargetRustInfo,
+                         get_min_max_update_time)
 
 from .logger import get_log_handler, logger
+from .sig_providers.forced_ida.forced_ida import ForcedIDAProvider
 from .sig_providers.ida.ida import IDAProvider
 from .subcommands.download import download_subcommand
-from .subcommands.sign import compile_target_subcommand, sign_libs, sign_subcommand
+from .subcommands.sign import (compile_target_subcommand, sign_libs,
+                               sign_subcommand)
 from .toolchain import ToolchainFactory
 from .util import slugify
 
@@ -35,7 +38,7 @@ def parse_args():
     provider.add_argument(
         "--provider",
         type=str,
-        choices=["IDA"],
+        choices=["IDA", "ForcedIDA"],
         default="IDA",
         dest="provider",
         help="Signature provider. This is the tool that will be used to create signatures.",
@@ -278,6 +281,9 @@ def main_cli():
         if args.provider == "IDA":
             provider = IDAProvider()
 
+        elif args.provider == "ForcedIDA":
+            provider = ForcedIDAProvider()
+
         else:
             NotImplementedError(f"Provider {args.provider} do not exists")
 
@@ -325,7 +331,7 @@ def main_cli():
 
         case "compile_target":
             if not args.toolchain:
-                _, version = get_rustc_version(pathlib.Path(args.target))
+                _, version = BasicProvider().get_rustc_version(pathlib.Path(args.target))
                 tc = (
                     ToolchainFactory.from_version(version)
                     .set_compilation_profile(args.profile)
@@ -361,7 +367,7 @@ def main_cli():
 
         case "sign_target":
             if not args.toolchain:
-                _, version = get_rustc_version(pathlib.Path(args.target))
+                _, version = BasicProvider().get_rustc_version(pathlib.Path(args.target))
                 tc = (
                     ToolchainFactory.from_version(version)
                     .set_compilation_profile(args.profile)
@@ -391,7 +397,7 @@ def main_cli():
                 print(lib)
 
         case "guess_project_creation_timestamp":
-            ti = TargetRustInfo.from_target(args.target)
+            ti = TargetRustInfo.from_target(args.target, fast_load=False)
             min_date, max_date = get_min_max_update_time(ti.dependencies)
             print(f"Latest dependency was added between {min_date} and {max_date}")
 
