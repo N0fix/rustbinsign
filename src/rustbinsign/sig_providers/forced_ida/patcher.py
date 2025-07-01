@@ -22,11 +22,11 @@ class LiefParsed:
 
     def virtual_address_to_offset(self, va): ...
 
-    def get_plugin_entry_call_pat(): ...
+    def get_plugin_entry_call_pat(self): ...
 
-    def get_plugin_entry_end_pat(): ...
+    def get_plugin_entry_end_pat(self): ...
 
-    def get_sig_gen_jmp_pat(): ...
+    def get_sig_gen_jmp_pat(self): ...
 
     def get_lib_ext(self): ...
 
@@ -37,23 +37,26 @@ class LiefPE(LiefParsed):
     def __init__(self, target: pathlib.Path):
         self.pe = lief.PE.parse(target)
 
-    def get_plugin_entry_call_pat():
-        pat = rb"\xff\x10"  # call qword ptr [rbp+0]
+    def get_plugin_entry_call_pat(self):
+        pat = rb"\xff\x10"  # call qword ptr [rax]
         return pat
 
-    def get_plugin_entry_end_pat():
+    def get_plugin_entry_end_pat(self):
         end_of_fn = rb"\x48\x8B\xC3.{5}\x48\x83\xc4\x60.{1,3}\xc3"
         return end_of_fn
 
-    def get_sig_gen_jmp_pat():
+    def get_sig_gen_jmp_pat(self):
         pat = rb"\x83\xF8\x01\x0F.{3}\x00\x00"
         return pat, b"\x90" * len(pat)
 
     def get_lib_ext(self):
         return ".dll"
 
-    def virtual_address_to_offset(self, va):
-        return self.pe.rva_to_offset(va)
+    def rva_to_offset(self, rva):
+        return self.pe.rva_to_offset(rva)
+
+    def va_to_offset(self, va):
+        return self.pe.va_to_offset(va)
 
     def get_call_patch(self, to_va: int, from_va: int, pos_va: int):
         mov_rcx_rbx = bytes.fromhex("48 89 d9")
@@ -62,6 +65,11 @@ class LiefPE(LiefParsed):
 
         jmp = bytes.fromhex(f"EB {pos_va - jmp_loc - 2 - 19:02x}")
         return mov_rcx_rbx + call_target + jmp
+
+    def get_export(self, name):
+        for entry in self.pe.get_export().entries:
+            if entry.name == name:
+                return entry
 
 
 class LiefELF(LiefParsed):
@@ -85,15 +93,15 @@ class LiefELF(LiefParsed):
     def get_lib_ext(self):
         return ".so"
 
-    def get_plugin_entry_call_pat():
+    def get_plugin_entry_call_pat(self):
         pat = rb"\xff\x55\x00"  # call qword ptr [rbp+0]
         return pat
 
-    def get_plugin_entry_end_pat():
+    def get_plugin_entry_end_pat(self):
         end_of_fn = rb"\x48\x83\xc4.{3,6}\xc3"
         return end_of_fn
 
-    def get_sig_gen_jmp_pat():
+    def get_sig_gen_jmp_pat(self):
         pat = rb"\x0F.{3}\x00\x00\x48\x89\xDF\xE8"
         return pat, b"\x90" * 6
 
@@ -110,16 +118,29 @@ def get_sig_generation_fn_va() -> int:
             vtbl = plugin_vtable.parse(content[i : i + 6 * 8])
             return vtbl.generate_sigs_fn
 
+if filename.endswith(".dll"):
+    target = LiefPE(pathlib.Path(filename))
+    print("PE version doesn't work yet", file=sys.stderr)
+    exit(1)
 
-target = LiefELF(pathlib.Path(filename))
+
+elif filename.endswith(".so"):
+    target = LiefELF(pathlib.Path(filename))
+
+else:
+    print("Invalid input file", file=sys.stderr)
+    exit(1)
+
 s = target.get_export("PLUGIN")
 plugin_pa = target.virtual_address_to_offset(s.value)
 print(f"Plugin PA: {plugin_pa:x}")
 plugin_ep_va = struct.unpack("<Q", content[plugin_pa + 8 : plugin_pa + 16])[0]
 plugin_ep_pa = target.virtual_address_to_offset(plugin_ep_va)
 
-pat = target.get_plugin_entry_call_pat()  # rb"\xff\x55\x00"  # call qword ptr [rbp+0]
+pat = target.get_plugin_entry_call_pat()
 end_of_fn = target.get_plugin_entry_end_pat()  # rb"\x48\x83\xc4.{3,6}\xc3"
+
+print(f"Fn PA: {plugin_ep_pa:x}")
 match = next(re.finditer(pat, content[plugin_ep_pa : plugin_ep_pa + 0x200]))
 addr_to_patch = plugin_ep_pa + match.end()
 match = next(re.finditer(end_of_fn, content[addr_to_patch : addr_to_patch + 0x200]))
