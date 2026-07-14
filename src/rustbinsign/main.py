@@ -11,6 +11,7 @@ from rustbininfo import (BasicProvider, Crate, TargetRustInfo,
 from .logger import get_log_handler, logger
 from .sig_providers.forced_ida.forced_ida import ForcedIDAProvider
 from .sig_providers.ida.ida import IDAProvider
+from .sig_providers.binja.main import BinjaProvider
 from .subcommands.download import download_subcommand
 from .subcommands.sign import (compile_target_subcommand, sign_libs,
                                sign_subcommand)
@@ -38,7 +39,7 @@ def parse_args():
     provider.add_argument(
         "--provider",
         type=str,
-        choices=["IDA", "ForcedIDA"],
+        choices=["IDA", "ForcedIDA", "Binja"],
         default="IDA",
         dest="provider",
         help="Signature provider. This is the tool that will be used to create signatures.",
@@ -280,10 +281,10 @@ def main_cli():
     if args.mode in ("download_sign", "sign_libs", "sign_target", "sign_stdlib"):
         if args.provider == "IDA":
             provider = IDAProvider()
-
         elif args.provider == "ForcedIDA":
             provider = ForcedIDAProvider()
-
+        elif args.provider == "Binja":
+            provider = BinjaProvider()
         else:
             NotImplementedError(f"Provider {args.provider} do not exists")
 
